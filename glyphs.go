@@ -50,25 +50,25 @@ func NewFormatter() *FormatterDef {
 	
 }
 
-func (f *FormatterDef) WriteGlyph(pg *PixelGrid, p Pixel, g Glyph, x uint64, y uint64) {
+func (f *FormatterDef) WriteGlyph(s *Surface, c Color, g Glyph, x uint64, y uint64) {
 	for j,row := range g.Layout {
 		for i,val := range row {
 			if val != 0 {
-				pg.SetValue(x+uint64(i),y+uint64(j), p)
+				s.SetValue(x+uint64(i),y+uint64(j), c)
 			}
 		}
 	}
 }
 
-func (f *FormatterDef) WriteString(pg *PixelGrid, p Pixel, s string, x uint64, y uint64) {
+func (f *FormatterDef) WriteString(s *Surface, c Color, str string, x uint64, y uint64) {
 	offset := 0
-	for _,c := range s {
-		g, ok := f.Glpyhs[c]
+	for _,char := range str {
+		glyph, ok := f.Glpyhs[char]
 		if !ok {
-			g = f.Unknown
+			glyph = f.Unknown
 		}
-		f.WriteGlyph(pg, p, g, x + uint64(offset), y)
-		offset += g.Width
+		f.WriteGlyph(s, c, glyph, x + uint64(offset), y)
+		offset += glyph.Width
 	}
 }
 

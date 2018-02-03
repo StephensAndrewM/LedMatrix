@@ -34,16 +34,13 @@ func (d *WebDisplay) Initialize() {
 	fmt.Println("Serving HTTP traffic...")
 }
 
-func (d *WebDisplay) Redraw(g *PixelGrid) {
-	fmt.Println("Redraw")
-	fmt.Println(g)
+func (d *WebDisplay) Redraw(s *Surface) {
 	if d.Conn != nil {
-		json, err := json.Marshal(g)
+		json, err := json.Marshal(s)
 		if err != nil {
 			fmt.Sprintln("JSON Error: %s", err)
 			return
 		}
-		fmt.Println(json)
 		d.Conn.WriteMessage(websocket.TextMessage, json)
 	}
 }
