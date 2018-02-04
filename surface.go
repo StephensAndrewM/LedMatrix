@@ -7,6 +7,7 @@ import (
 type Surface struct {
     Width int
     Height int
+    Midpoint int
     Grid [][]Color
     glyphs *GlyphService
 }
@@ -14,6 +15,7 @@ type Surface struct {
 func NewSurface(width, height int) *Surface {
     s := new(Surface)
     s.Width = width
+    s.Midpoint = width/2
     s.Height = height
     s.Grid = make([][]Color, height)
     for i := range s.Grid {
@@ -57,9 +59,11 @@ func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int
     width := 0
     for i,char := range str {
         g := s.glyphs.GetGlyph(char)
-        width += g.Width
+        width += g.Width + 1
         glyphs[i] = g
     }
+    // Remove the kerning on the last letter
+    width--
 
     var originX int
     switch(align) {
@@ -74,7 +78,7 @@ func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int
     offsetX := 0
     for _,g := range glyphs {
         s.WriteGlyph(g, c, originX + offsetX, y)
-        offsetX += g.Width
+        offsetX += g.Width + 1
     }
 }
 
@@ -84,6 +88,15 @@ func (s *Surface) WriteGlyph(g Glyph, c Color, x int, y int) {
             if val != 0 {
                 s.SetValue(x + int(i), y + int(j), c)
             }
+        }
+    }
+}
+
+func (s *Surface) Clear() {
+    blank := Color{0,0,0}
+    for j := 0; j < s.Height; j++ {
+        for i := 0; i < s.Width; i++ {
+            s.SetValue(i,j,blank)
         }
     }
 }

@@ -1,4 +1,4 @@
-var SCREEN_WIDTH = 32;
+var SCREEN_WIDTH = 64;
 var SCREEN_HEIGHT = 32;
 
 var screenPixels = null;
