@@ -17,7 +17,8 @@ func main() {
 func RedrawDisplay(d Display) {
 	s := NewSurface(32,32)
 	c := Color{0,255,0}
-	Formatter.WriteString(s, c, "abc", 1, 1)
+	s.WriteString("abc", c, ALIGN_LEFT, 1, 1)
+	s.WriteString("cba", c, ALIGN_RIGHT, 30, 1)
 	fmt.Println("RedrawDisplay")
 	d.Redraw(s)
 }

@@ -1,75 +1,63 @@
 package main
 
+// import "fmt"
+
 type Glyph struct {
 	Character rune
 	Width int
 	Layout [][]uint8
 }
 
-type FormatterDef struct {
+type GlyphService struct {
 	Glpyhs map[rune]Glyph
 	Unknown Glyph
 }
 
-func (f *FormatterDef) InitGlyph(c rune, g Glyph) {
+func (s *GlyphService) Register(c rune, layout [][]uint8) {
+	g := Glyph{}
 	g.Character = c
-	g.Width = len(g.Layout[0])
-	f.Glpyhs[c] = g
+	g.Width = len(layout[0])
+	g.Layout = layout
+	s.Glpyhs[c] = g
 }
 
-func NewFormatter() *FormatterDef {
+func NewGlyphService() *GlyphService {
 
-	f := new(FormatterDef)
-	f.Glpyhs = make(map[rune]Glyph)
+	s := new(GlyphService)
+	s.Glpyhs = make(map[rune]Glyph)
 
-	a := Glyph {
-		Layout: [][]uint8{
-			{0, 1, 1, 1, 0},
-			{1, 0, 0, 0, 1},
-			{1, 0, 0, 0, 1},
-			{1, 1, 1, 1, 1},
-			{1, 0, 0, 0, 1},
-			{1, 0, 0, 0, 1},
-			{1, 0, 0, 0, 1}}}
-	f.InitGlyph('a', a)
+	s.Register('a', [][]uint8{
+			{0,1,1,1,0},
+			{1,0,0,0,1},
+			{1,0,0,0,1},
+			{1,1,1,1,1},
+			{1,0,0,0,1},
+			{1,0,0,0,1},
+			{1,0,0,0,1}})
 
+	// Manually set up unknown glyph (checkerboard)
 	unknown := Glyph {
 		Width: 5,
 		Layout: [][]uint8{
-			{1, 0, 1, 0, 1},
-			{0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1},
-			{0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1},
-			{0, 1, 0, 1, 0},
-			{1, 0, 1, 0, 1},
-			{0, 1, 0, 1, 0}}}
-	f.Unknown = unknown
+			{1,0,1,0,1},
+			{0,1,0,1,0},
+			{1,0,1,0,1},
+			{0,1,0,1,0},
+			{1,0,1,0,1},
+			{0,1,0,1,0},
+			{1,0,1,0,1},
+			{0,1,0,1,0}}}
+	s.Unknown = unknown
 
-	return f
+	return s
 	
 }
 
-func (f *FormatterDef) WriteGlyph(s *Surface, c Color, g Glyph, x uint64, y uint64) {
-	for j,row := range g.Layout {
-		for i,val := range row {
-			if val != 0 {
-				s.SetValue(x+uint64(i),y+uint64(j), c)
-			}
-		}
+func (s *GlyphService) GetGlyph(char rune) Glyph {
+	glyph, ok := s.Glpyhs[char]
+	// fmt.Println("GlyphService.GetGlyph attempting to find " + string(char))
+	if !ok {
+		glyph = s.Unknown
 	}
+	return glyph
 }
-
-func (f *FormatterDef) WriteString(s *Surface, c Color, str string, x uint64, y uint64) {
-	offset := 0
-	for _,char := range str {
-		glyph, ok := f.Glpyhs[char]
-		if !ok {
-			glyph = f.Unknown
-		}
-		f.WriteGlyph(s, c, glyph, x + uint64(offset), y)
-		offset += glyph.Width
-	}
-}
-
-var Formatter = NewFormatter()

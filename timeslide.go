@@ -5,22 +5,18 @@ type TimeSlide struct {
 }
 
 func NewTimeSlide() *TimeSlide {
-	s := new(TimeSlide)
-	return s
+	sl := new(TimeSlide)
+	return sl
 }
 
-func (s TimeSlide) Preload() {
+func (sl TimeSlide) Preload() {
 	// No preloading needed
 }
 
-func (s TimeSlide) IsEnabled() bool {
+func (sl TimeSlide) IsEnabled() bool {
 	return true
 }
 
-func (s TimeSlide) Draw() {
-	
-}
-
-func (s TimeSlide) Redraw() {
-	
+func (sl TimeSlide) Draw(s *Surface) {
+		
 }
