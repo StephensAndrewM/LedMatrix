@@ -17,8 +17,10 @@ func main() {
 func RedrawDisplay(d Display) {
 	s := NewSurface(32,32)
 	c := Color{0,255,0}
-	s.WriteString("abc", c, ALIGN_LEFT, 1, 1)
-	s.WriteString("cba", c, ALIGN_RIGHT, 30, 1)
+	s.WriteString("ABCDEF", c, ALIGN_LEFT, 0, 0)
+	s.WriteString("12345", c, ALIGN_LEFT, 0, 8)
+	s.WriteString("67890", c, ALIGN_LEFT, 0, 16)
+	s.WriteString("❤:_/", c, ALIGN_LEFT, 0, 24)
 	fmt.Println("RedrawDisplay")
 	d.Redraw(s)
 }
