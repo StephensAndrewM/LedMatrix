@@ -89,10 +89,12 @@ func (sl *MbtaSlide) Draw(s *Surface) {
         return
     }
     white := Color{255, 255, 255}
+    blank := Color{0, 0, 0}
     red := Color{255, 0, 0}
-    s.WriteString(StationLabels[sl.Station], red, ALIGN_CENTER, 32, 0)
-    for i := 0; i < 3; i++ {
-        y := (i + 1) * 8
+    s.DrawBox(red, 0, 0, s.Width, 9)
+    s.WriteString(StationLabels[sl.Station], blank, ALIGN_CENTER, 32, 1)
+    for i := 0; i < min(3, len(sl.Predictions)); i++ {
+        y := ((i + 1) * 8) + 1
         s.WriteString(
             DavisDirectionLabels[sl.Predictions[i].Direction],
             white,
@@ -129,4 +131,12 @@ type MbtaApiPredictionAttributes struct {
 type MbtaPrediction struct {
     Direction int
     Time      time.Time
+}
+
+func min(x, y int) int {
+    if x < y {
+        return x
+    } else {
+        return y
+    }
 }

@@ -5,17 +5,17 @@ import (
 )
 
 type Surface struct {
-    Width int
-    Height int
+    Width    int
+    Height   int
     Midpoint int
-    Grid [][]Color
-    glyphs *GlyphService
+    Grid     [][]Color
+    glyphs   *GlyphService
 }
 
 func NewSurface(width, height int) *Surface {
     s := new(Surface)
     s.Width = width
-    s.Midpoint = width/2
+    s.Midpoint = width / 2
     s.Height = height
     s.Grid = make([][]Color, height)
     for i := range s.Grid {
@@ -32,14 +32,15 @@ type Color struct {
 }
 
 type Alignment int
-const(
+
+const (
     ALIGN_LEFT Alignment = iota
     ALIGN_CENTER
     ALIGN_RIGHT
 )
 
-func (s *Surface) GetValue(x, y int) (Color,error) {
-    if x < 0 || x >= s.Width || y < 0 || y >= s.Height  {
+func (s *Surface) GetValue(x, y int) (Color, error) {
+    if x < 0 || x >= s.Width || y < 0 || y >= s.Height {
         return Color{}, errors.New("Surface.GetValue out of bounds.")
     }
     return s.Grid[y][x], nil
@@ -47,7 +48,7 @@ func (s *Surface) GetValue(x, y int) (Color,error) {
 
 func (s *Surface) SetValue(x, y int, p Color) error {
     // fmt.Printf("Attempting to set (%d,%d) to %s", x, y, p)
-    if x < 0 || x >= s.Width || y < 0 || y >= s.Height  {
+    if x < 0 || x >= s.Width || y < 0 || y >= s.Height {
         return errors.New("Surface.SetValue out of bounds.")
     }
     s.Grid[y][x] = p
@@ -57,7 +58,7 @@ func (s *Surface) SetValue(x, y int, p Color) error {
 func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int) {
     glyphs := make([]Glyph, len(str))
     width := 0
-    for i,char := range str {
+    for i, char := range str {
         g := s.glyphs.GetGlyph(char)
         width += g.Width + 1
         glyphs[i] = g
@@ -66,7 +67,7 @@ func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int
     width--
 
     var originX int
-    switch(align) {
+    switch align {
     case ALIGN_LEFT:
         originX = x
     case ALIGN_RIGHT:
@@ -76,27 +77,35 @@ func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int
     }
 
     offsetX := 0
-    for _,g := range glyphs {
-        s.WriteGlyph(g, c, originX + offsetX, y)
+    for _, g := range glyphs {
+        s.WriteGlyph(g, c, originX+offsetX, y)
         offsetX += g.Width + 1
     }
 }
 
 func (s *Surface) WriteGlyph(g Glyph, c Color, x int, y int) {
-    for j,row := range g.Layout {
-        for i,val := range row {
+    for j, row := range g.Layout {
+        for i, val := range row {
             if val != 0 {
-                s.SetValue(x + int(i), y + int(j), c)
+                s.SetValue(x+int(i), y+int(j), c)
             }
         }
     }
 }
 
 func (s *Surface) Clear() {
-    blank := Color{0,0,0}
+    blank := Color{0, 0, 0}
     for j := 0; j < s.Height; j++ {
         for i := 0; i < s.Width; i++ {
-            s.SetValue(i,j,blank)
+            s.SetValue(i, j, blank)
+        }
+    }
+}
+
+func (s *Surface) DrawBox(c Color, x int, y int, width int, height int) {
+    for j := y; j < y+height; j++ {
+        for i := x; i < x+width; i++ {
+            s.SetValue(i, j, c)
         }
     }
 }
