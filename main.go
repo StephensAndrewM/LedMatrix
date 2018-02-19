@@ -5,7 +5,8 @@ import (
 	"time"
 )
 
-const SEC_PER_SLIDE = 15
+const PRELOAD_SEC = 5
+const SEC_PER_SLIDE = 6
 const SURFACE_WIDTH = 64
 const SURFACE_HEIGHT = 32
 
@@ -20,34 +21,43 @@ func main() {
 	// Get all of the slides we'll be using
 	slides := GetAllSlides()
 
-	var slideOffset, elapsedTime int
+	// Initial condition (note slide 0 is not preloaded)
+	var currentSlideId, elapsedTime int
+	currentSlide := slides[currentSlideId]
+
+	// Main loop
 	for {
-		fmt.Printf("Slide %d Time %d\n", slideOffset, elapsedTime)
-		sl := slides[slideOffset]
-		sl.Draw(s)
+		currentSlide.Draw(s)
 		d.Redraw(s)
 		elapsedTime++
-		if (elapsedTime >= SEC_PER_SLIDE) {
-			slideOffset = IncrementSlideOffset(slideOffset, len(slides))
+
+		// Preload what will be the next slide concurrently
+		if elapsedTime == (SEC_PER_SLIDE - PRELOAD_SEC) {
+			nextSlideId := NextSlideId(currentSlideId, len(slides))
+			fmt.Printf("Preloading slide %d\n", nextSlideId)
+			go slides[nextSlideId].Preload()
+		}
+
+		// Advance the slide when ready
+		if elapsedTime >= SEC_PER_SLIDE {
+			currentSlideId = NextSlideId(currentSlideId, len(slides))
 			elapsedTime = 0
+			currentSlide = slides[currentSlideId]
+			fmt.Printf("Advancing to slide %d\n", currentSlideId)
 		}
 		time.Sleep(1 * time.Second)
 	}
 }
 
-func RedrawDisplay(d Display) {
-	s := NewSurface(32,32)
-	d.Redraw(s)
-}
-
 func GetAllSlides() []Slide {
 	return []Slide{
 		NewTimeSlide(),
+		NewMbtaSlide(MBTA_ROUTE_RED, MBTA_STATION_DAVIS),
 		NewWeatherSlide(),
 	}
 }
 
-func IncrementSlideOffset(current int, total int) int {
+func NextSlideId(current int, total int) int {
 	current++
 	if current >= total {
 		current = 0
