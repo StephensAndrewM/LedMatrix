@@ -1,7 +1,7 @@
-var SCREEN_WIDTH = 64;
+var SCREEN_WIDTH = 128;
 var SCREEN_HEIGHT = 32;
-var LED_SIZE = 12;
-var LED_SPACE = 4;
+var LED_SIZE = 8;
+var LED_SPACE = 2;
 var MIN_BRIGHTNESS = 40;
 var SOCKET_ADDR = "ws://localhost:8000/ws";
 
@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 var initScreen = function() {
 	canvas = document.getElementById('screen');
-    canvas.width = SCREEN_WIDTH * 20;
-    canvas.height = SCREEN_HEIGHT * 20;
+    canvas.width = SCREEN_WIDTH * (LED_SIZE + (2 * LED_SPACE));
+    canvas.height = SCREEN_HEIGHT * (LED_SIZE + (2 * LED_SPACE));
 }
 
 var initSocket = function() {

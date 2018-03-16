@@ -92,7 +92,7 @@ func (sl *MbtaSlide) Draw(s *Surface) {
     blank := Color{0, 0, 0}
     red := Color{255, 0, 0}
     s.DrawBox(red, 0, 0, s.Width, 9)
-    s.WriteString(StationLabels[sl.Station], blank, ALIGN_CENTER, 32, 1)
+    s.WriteString(StationLabels[sl.Station], blank, ALIGN_CENTER, s.Width/2, 1)
     for i := 0; i < min(3, len(sl.Predictions)); i++ {
         y := ((i + 1) * 8) + 1
         s.WriteString(

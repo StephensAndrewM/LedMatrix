@@ -7,7 +7,7 @@ import (
 
 const PRELOAD_SEC = 5
 const SEC_PER_SLIDE = 6
-const SURFACE_WIDTH = 64
+const SURFACE_WIDTH = 128
 const SURFACE_HEIGHT = 32
 
 func main() {
