@@ -6,7 +6,7 @@ import (
 )
 
 const PRELOAD_SEC = 5
-const SEC_PER_SLIDE = 6
+const SEC_PER_SLIDE = 30
 const SURFACE_WIDTH = 128
 const SURFACE_HEIGHT = 32
 
@@ -51,9 +51,11 @@ func main() {
 
 func GetAllSlides() []Slide {
 	return []Slide{
-		NewTimeSlide(),
-		NewMbtaSlide(MBTA_ROUTE_RED, MBTA_STATION_DAVIS),
-		NewWeatherSlide(SUNNYVALE_ZIP),
+		// NewTimeSlide(),
+		NewGlyphTestSlide(TEST_LETTERS),
+		NewGlyphTestSlide(TEST_NUMSYM),
+		// NewMbtaSlide(MBTA_ROUTE_RED, MBTA_STATION_DAVIS),
+		// NewWeatherSlide(SUNNYVALE_ZIP),
 	}
 }
 
