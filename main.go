@@ -53,7 +53,7 @@ func GetAllSlides() []Slide {
 	return []Slide{
 		NewTimeSlide(),
 		NewMbtaSlide(MBTA_ROUTE_RED, MBTA_STATION_DAVIS),
-		NewWeatherSlide(),
+		NewWeatherSlide(SUNNYVALE_ZIP),
 	}
 }
 
