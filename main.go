@@ -51,10 +51,10 @@ func main() {
 
 func GetAllSlides() []Slide {
 	return []Slide{
-		// NewTimeSlide(),
-		NewGlyphTestSlide(TEST_LETTERS),
-		NewGlyphTestSlide(TEST_NUMSYM),
-		// NewMbtaSlide(MBTA_ROUTE_RED, MBTA_STATION_DAVIS),
+		NewTimeSlide(),
+		// NewGlyphTestSlide(TEST_LETTERS),
+		// NewGlyphTestSlide(TEST_NUMSYM),
+		NewMbtaSlide(MBTA_STATION_ID_DAVIS, MBTA_STATION_NAME_DAVIS),
 		// NewWeatherSlide(SUNNYVALE_ZIP),
 	}
 }
