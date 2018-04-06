@@ -1,19 +1,17 @@
 package main
 
 import (
-    "bytes"
     "encoding/json"
     "fmt"
     "math"
-    "net/http"
     "sort"
     "strings"
     "time"
 )
 
 type MbtaSlide struct {
-    StationId   string
     StationName string
+    HttpHelper  *HttpHelper
     Predictions []MbtaPrediction
 }
 
@@ -21,42 +19,45 @@ const MBTA_STATION_ID_DAVIS = "place-davis"
 const MBTA_STATION_NAME_DAVIS = "DAVIS SQUARE"
 
 func NewMbtaSlide(stationId, stationName string) *MbtaSlide {
-    sl := new(MbtaSlide)
-    sl.StationId = stationId
-    sl.StationName = stationName
-    return sl
+    this := new(MbtaSlide)
+    this.StationName = stationName
+
+    // Set up HTTP fetcher
+    url := fmt.Sprintf("https://api-v3.mbta.com/predictions"+
+        "?include=route,trip&filter[stop]=%s", stationId)
+    refresh := 60 * time.Second
+    this.HttpHelper = NewHttpHelper(url, refresh)
+
+    return this
 }
 
-func (sl *MbtaSlide) Preload() {
-
-    const MBTA_PREDICTION_QUERY = "https://api-v3.mbta.com/predictions" +
-        "?include=route,trip&filter[stop]=%s"
+func (this *MbtaSlide) Preload() {
 
     // Load live Data from MBTA
-    resp, httpErr := http.Get(fmt.Sprintf(MBTA_PREDICTION_QUERY, sl.StationId))
-    if httpErr != nil {
-        fmt.Printf("Error loading MBTA data: %s\n", httpErr)
+    respBytes, ok := this.HttpHelper.Fetch()
+    if !ok {
+        fmt.Printf("Error loading MBTA data\n")
         return
         // TODO Display error on screen
     }
 
-    // Parse response to JSON
-    respBuf := new(bytes.Buffer)
-    respBuf.ReadFrom(resp.Body)
-    // fmt.Printf("Response is: %s", respBuf.Bytes())
-
     var respData MbtaApiResponse
-    jsonErr := json.Unmarshal(respBuf.Bytes(), &respData)
+    jsonErr := json.Unmarshal(respBytes, &respData)
     if jsonErr != nil {
         fmt.Printf("Error interpreting MBTA data: %s\n", jsonErr)
         return
         // TODO Display error on screen
     }
 
-    trips := sl.GetTripDataByTripId(respData.Included)
+    this.ParsePredictions(respData)
+}
+
+func (this *MbtaSlide) ParsePredictions(resp MbtaApiResponse) {
+
+    trips := this.GetTripDataByTripId(resp.Included)
 
     var predictions []MbtaPrediction
-    for _, r := range respData.Data {
+    for _, r := range resp.Data {
         if r.Type == "prediction" {
             // Some vehicles don't give departure estimates - ignore them
             if len(r.Attributes.DepartureTime) == 0 {
@@ -89,10 +90,10 @@ func (sl *MbtaSlide) Preload() {
     sort.Slice(predictions, func(i, j int) bool {
         return predictions[i].Time.Before(predictions[j].Time)
     })
-    sl.Predictions = predictions
+    this.Predictions = predictions
 }
 
-func (sl *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[string]MbtaTrip {
+func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[string]MbtaTrip {
 
     // Build a map of Route data keyed by Route ID
     routeDefs := make(map[string]MbtaRoute)
@@ -126,29 +127,32 @@ func (sl *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[string
     return m
 }
 
-func (sl *MbtaSlide) Draw(s *Surface) {
+func (this *MbtaSlide) Draw(s *Surface) {
     s.Clear()
     white := Color{255, 255, 255}
     yellow := Color{255, 255, 0}
     red := Color{255, 0, 0}
     blank := Color{0, 0, 0}
 
-    s.WriteString(sl.StationName, red, ALIGN_CENTER, s.Width/2, 1)
+    s.WriteString(this.StationName, red, ALIGN_CENTER, s.Width/2, 1)
 
-    if len(sl.Predictions) == 0 {
+    if len(this.Predictions) == 0 {
         fmt.Println("No predictions")
         return
     }
 
-    n := 0  // Count of valid predictions found - we skip some
-    for i := 0; i < len(sl.Predictions); i++ {
-        p := sl.Predictions[i]
+    n := 0 // Count of valid predictions found - we skip some
+    for i := 0; i < len(this.Predictions); i++ {
+        p := this.Predictions[i]
         y := ((n + 1) * 8) + 1
 
         // Get time estimate, and maybe skip
         est := p.Time.Sub(time.Now())
         estMin := int(math.Floor(est.Minutes()))
-        if (estMin < 0) { continue } // Ignore past predictions
+        // Some predictions go negative - ignore those
+        if estMin < 0 {
+            continue
+        }
 
         // Route identifier
         if p.Route.Type == MbtaRouteTypeRedLine {
@@ -167,7 +171,10 @@ func (sl *MbtaSlide) Draw(s *Surface) {
         s.WriteString(estStr, white, ALIGN_RIGHT, s.Width-1, y)
 
         n++
-        if (n >= 3) { break; }
+        // We can't display more than 3 predictions on screen so stop
+        if n >= 3 {
+            break
+        }
     }
 }
 

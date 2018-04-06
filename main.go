@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-const PRELOAD_SEC = 5
-const SEC_PER_SLIDE = 30
+const PRELOAD_SEC = 2
+const SEC_PER_SLIDE = 5
 const SURFACE_WIDTH = 128
 const SURFACE_HEIGHT = 32
 
