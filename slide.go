@@ -5,6 +5,8 @@ import (
     "fmt"
     "time"
     "net/http"
+    "os"
+    "io/ioutil"
 )
 
 type Slide interface {
@@ -55,6 +57,9 @@ func (this *HttpHelper) Fetch() ([]byte, bool) {
 
     this.LastFetchTime = time.Now()
     this.CachedResponse = respBuf.Bytes()
+
+    // Output debug file
+    ioutil.WriteFile("debug.txt", respBuf.Bytes(), os.FileMode(770))
 
     return respBuf.Bytes(), true
 }

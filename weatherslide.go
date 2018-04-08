@@ -1,63 +1,101 @@
 package main
 
 import (
-    "bytes"
     "encoding/json"
     "fmt"
-    "net/http"
+    "time"
 )
 
 type WeatherSlide struct {
-    ZipCode int
+    HttpHelper *HttpHelper
+    Weather WeatherApiResponse
 }
-
-const WEATHER_API_URL = "http://api.wunderground.com/api"
-const WEATHER_API_QUERY = "/%s/conditions/forecast/q/%d.json"
 
 const SUNNYVALE_ZIP = 94086
 
-func NewWeatherSlide(zipCode int) *WeatherSlide {
-    sl := new(WeatherSlide)
-    sl.ZipCode = zipCode
-    return sl
+var WEATHER_API_ICON_MAP = map[string]string{
+    // TODO fill this out with all possible icons
+    // TODO make this use actual images
+    "rain": "RN",
+    "cloudy": "CLO",
+    "partlycloudy": "PCL",
+    "mostlycloudy": "MCL",
+    "clear": "CLR",
 }
 
-func (sl WeatherSlide) Preload() {
+func NewWeatherSlide(zipCode int) *WeatherSlide {
+    this := new(WeatherSlide)
 
-    // Load live Data from Weather Underground
-    resp, httpErr := http.Get(WEATHER_API_URL +
-        fmt.Sprintf(WEATHER_API_QUERY, WEATHER_API_KEY, sl.ZipCode))
-    if httpErr != nil {
-        fmt.Printf("Error loading Weather data: %s\n", httpErr)
+    // Set up HTTP fetcher
+    url := fmt.Sprintf("http://api.wunderground.com/api"+
+        "/%s/conditions/forecast/q/%d.json", WEATHER_API_KEY, zipCode)
+    refresh := 60 * time.Second
+    this.HttpHelper = NewHttpHelper(url, refresh)
+    
+    return this
+}
+
+func (this *WeatherSlide) Preload() {
+
+    // Load live Data from MBTA
+    respBytes, ok := this.HttpHelper.Fetch()
+    if !ok {
+        fmt.Printf("Error loading Weather data\n")
         return
         // TODO Display error on screen
     }
 
     // Parse response to JSON
-    respBuf := new(bytes.Buffer)
-    respBuf.ReadFrom(resp.Body)
     var respData WeatherApiResponse
-    jsonErr := json.Unmarshal(respBuf.Bytes(), &respData)
+    jsonErr := json.Unmarshal(respBytes, &respData)
     if jsonErr != nil {
         fmt.Printf("Error interpreting Weather data: %s\n", jsonErr)
         return
         // TODO Display error on screen
     }
     fmt.Printf("Weather result is %+v", respData)
+
+    this.Weather = respData
 }
 
-func (sl WeatherSlide) Draw(s *Surface) {
-
+func (this *WeatherSlide) Draw(s *Surface) {
     s.Clear()
     white := Color{255, 255, 255}
-    green := Color{0, 255, 0}
     yellow := Color{255, 255, 0}
-    s.WriteString("NOW:", white, ALIGN_LEFT, 0, 0)
-    s.WriteString("65°", green, ALIGN_RIGHT, s.Width-1, 0)
-    s.WriteString("CLEAR", green, ALIGN_RIGHT, s.Width-1, 8)
-    s.WriteString("TMRW:", white, ALIGN_LEFT, 0, 16)
-    s.WriteString("60°", yellow, ALIGN_RIGHT, s.Width-1, 16)
-    s.WriteString("RAIN", yellow, ALIGN_RIGHT, s.Width-1, 24)
+    
+    const dayLabelXOffset = 48
+    const tempXOffset = 82
+    s.WriteString("Now:", yellow, ALIGN_RIGHT, dayLabelXOffset, 2)
+    this.WriteWeatherString(s, this.Weather.Observations.Icon, 2)
+    s.WriteString(
+        fmt.Sprintf("%.1f°", this.Weather.Observations.TempF), white, ALIGN_LEFT, tempXOffset, 2)
+
+    s.WriteString("Tomorrow:", yellow, ALIGN_RIGHT, dayLabelXOffset, 12)
+    this.WriteWeatherString(s, this.Weather.Forecast.SimpleForecast.ForecastDay[0].Icon, 12)
+    s.WriteString(
+        fmt.Sprintf("%s°/%s°", 
+            this.Weather.Forecast.SimpleForecast.ForecastDay[0].High.Fahrenheit,
+            this.Weather.Forecast.SimpleForecast.ForecastDay[0].Low.Fahrenheit), 
+        white, ALIGN_LEFT, tempXOffset, 12)
+
+    s.WriteString(this.Weather.Forecast.SimpleForecast.ForecastDay[1].Date.Weekday + ":", yellow, ALIGN_RIGHT, dayLabelXOffset, 22)
+    this.WriteWeatherString(s, this.Weather.Forecast.SimpleForecast.ForecastDay[1].Icon, 22)
+        s.WriteString(
+        fmt.Sprintf("%s°/%s°", 
+            this.Weather.Forecast.SimpleForecast.ForecastDay[1].High.Fahrenheit,
+            this.Weather.Forecast.SimpleForecast.ForecastDay[1].Low.Fahrenheit), 
+        white, ALIGN_LEFT, tempXOffset, 22)
+}
+
+func (this *WeatherSlide) WriteWeatherString(s *Surface, condition string, yOffset int) {
+    white := Color{255, 255, 255}
+    const conditionXOffset = 54
+    icon, ok := WEATHER_API_ICON_MAP[condition]
+    if ok {
+        s.WriteString(icon, white, ALIGN_LEFT, conditionXOffset, yOffset)
+    } else {
+        fmt.Printf("Unknown condition %s\n", condition)
+    }
 }
 
 // Data structures used by the Weather Underground API
@@ -89,6 +127,7 @@ type WeatherForecastDay struct {
 type WeatherForecastDayDate struct {
     Epoch        string `json:"epoch"`
     WeekdayShort string `json:"weekday_short"`
+    Weekday string `json:"weekday"`
 }
 
 type WeatherForecastDayTemperature struct {
