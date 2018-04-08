@@ -41,6 +41,7 @@ func (this *MbtaSlide) Preload() {
         // TODO Display error on screen
     }
 
+    // Parse response to JSON
     var respData MbtaApiResponse
     jsonErr := json.Unmarshal(respBytes, &respData)
     if jsonErr != nil {
