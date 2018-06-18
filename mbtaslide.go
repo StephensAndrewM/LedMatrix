@@ -151,7 +151,6 @@ func (this *MbtaSlide) Draw(s *Surface) {
     s.WriteString(this.StationName, yellow, ALIGN_CENTER, s.Width/2, 1)
 
     if len(this.Predictions) == 0 {
-        fmt.Println("No predictions")
         return
     }
 
@@ -175,12 +174,18 @@ func (this *MbtaSlide) Draw(s *Surface) {
             s.DrawBox(lineColor, 0, y, 11, 7)
         }
 
+        // Size of box is different based on how many digits to display
+        destWidth := 93
+        if estMin > 9 {
+            destWidth = 87
+        }
+
         // Destination
         dest := strings.ToUpper(p.Destination)
-        s.WriteString(dest, white, ALIGN_LEFT, 13, y)
+        s.WriteStringBoxed(dest, white, ALIGN_LEFT, 12, y, destWidth)
 
         // Time estimate
-        estStr := fmt.Sprintf("%d min", estMin)
+        estStr := fmt.Sprintf("%d_min", estMin)
         s.WriteString(estStr, white, ALIGN_RIGHT, s.Width-1, y)
 
         n++

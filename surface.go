@@ -85,6 +85,42 @@ func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int
     }
 }
 
+func (s *Surface) WriteStringBoxed(str string, c Color, align Alignment, x int, y int, max int) {
+    glyphs := make([]Glyph, len(str))
+    width := 0
+    for i, char := range str {
+        g := s.glyphs.GetGlyph(char)
+        width += g.Width + 1
+        // If we exceed how much the box can hold, stop
+        if width > max {
+            break
+        }
+        glyphs[i] = g
+    }
+    // Remove the kerning on the last letter
+    width--
+
+    var originX int
+    switch align {
+    case ALIGN_LEFT:
+        originX = x
+    case ALIGN_RIGHT:
+        originX = x - width + 1
+    case ALIGN_CENTER:
+        originX = x - (width / 2)
+    }
+
+    offsetX := 0
+    for _, g := range glyphs {
+        s.WriteGlyph(g, c, originX+offsetX, y)
+        offsetX += g.Width + 1
+    }
+
+    // Draw the debug bounding box over the characters
+    // aqua := Color{0, 255, 255}
+    // s.DrawEmptyBox(aqua, x, y, max, 7)
+}
+
 func (s *Surface) WriteGlyph(g Glyph, c Color, x int, y int) {
     for j, row := range g.Layout {
         for i, val := range row {
@@ -109,6 +145,18 @@ func (s *Surface) DrawBox(c Color, x int, y int, width int, height int) {
         for i := x; i < x+width; i++ {
             s.SetValue(i, j, c)
         }
+    }
+}
+
+func (s *Surface) DrawEmptyBox(c Color, x int, y int, width int, height int) {
+    for j := y; j < y+height; j++ {
+        if j == y || j == y+height-1 {
+            for i := x; i < x+width; i++ {
+                s.SetValue(i, j, c)
+            }
+        }
+        s.SetValue(x, j, c)
+        s.SetValue(x+width, j, c)
     }
 }
 

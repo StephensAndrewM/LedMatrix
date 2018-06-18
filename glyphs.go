@@ -567,6 +567,15 @@ func NewGlyphService() *GlyphService {
         {0},
         {0},
         {1}})
+    // Underscore represents a short space
+    s.Register('_', [][]uint8{
+        {0},
+        {0},
+        {0},
+        {0},
+        {0},
+        {0},
+        {0}})
     s.Register(' ', [][]uint8{
         {0,0,0},
         {0,0,0},
