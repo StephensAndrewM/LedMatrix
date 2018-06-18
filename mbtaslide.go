@@ -16,7 +16,16 @@ type MbtaSlide struct {
 }
 
 const MBTA_STATION_ID_DAVIS = "place-davis"
+const MBTA_STATION_ID_PARK = "place-pktrm"
+const MBTA_STATION_ID_MGH = "place-chmnl"
+const MBTA_STATION_ID_GOVCTR = "place-gover"
+const MBTA_STATION_ID_HARVARD = "place-harsq"
+
 const MBTA_STATION_NAME_DAVIS = "DAVIS SQUARE"
+const MBTA_STATION_NAME_PARK = "PARK STREET"
+const MBTA_STATION_NAME_MGH = "CHARLES/MGH"
+const MBTA_STATION_NAME_GOVCTR = "GOVERNMENT CENTER"
+const MBTA_STATION_NAME_HARVARD = "HARVARD SQUARE"
 
 func NewMbtaSlide(stationId, stationName string) *MbtaSlide {
     this := new(MbtaSlide)
@@ -102,12 +111,18 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
         if r.Type == "route" {
             routeDef := MbtaRoute{}
             routeDef.Id = r.Id
-            // This logic assumes that a station only serves red line and bus
-            // Needs work to support different lines
-            if r.Attributes.Type == 1 {
-                routeDef.Type = MbtaRouteTypeRedLine
-            } else {
+            routeDef.Color = r.Attributes.Color
+            switch r.Attributes.Type {
+            case 0:
+                routeDef.Type = MbtaRouteTypeLightRail
+            case 1:
+                routeDef.Type = MbtaRouteTypeHeavyRail
+            case 2:
+                routeDef.Type = MbtaRouteTypeCommuterRail
+            case 3:
                 routeDef.Type = MbtaRouteTypeBus
+            default:
+                routeDef.Type = MbtaRouteTypeUnknown
             }
             routeDefs[r.Id] = routeDef
         }
@@ -132,10 +147,8 @@ func (this *MbtaSlide) Draw(s *Surface) {
     s.Clear()
     white := Color{255, 255, 255}
     yellow := Color{255, 255, 0}
-    red := Color{255, 0, 0}
-    blank := Color{0, 0, 0}
 
-    s.WriteString(this.StationName, red, ALIGN_CENTER, s.Width/2, 1)
+    s.WriteString(this.StationName, yellow, ALIGN_CENTER, s.Width/2, 1)
 
     if len(this.Predictions) == 0 {
         fmt.Println("No predictions")
@@ -155,12 +168,11 @@ func (this *MbtaSlide) Draw(s *Surface) {
             continue
         }
 
-        // Route identifier
-        if p.Route.Type == MbtaRouteTypeRedLine {
-            s.DrawBox(red, 0, y, 11, 7)
-            s.WriteString("R", blank, ALIGN_CENTER, 5, y)
-        } else {
+        if p.Route.Type == MbtaRouteTypeBus {
             s.WriteString(p.Route.Id, yellow, ALIGN_CENTER, 5, y)
+        } else {
+            lineColor := ColorFromHex(p.Route.Color)
+            s.DrawBox(lineColor, 0, y, 11, 7)
         }
 
         // Destination
@@ -214,6 +226,7 @@ type MbtaApiResourceRelationshipData struct {
 type MbtaApiResourceAttributes struct {
     DepartureTime string `json:"departure_time"` // For prediction
     Headsign      string `json:"headsign"`       // For trip
+    Color         string `json:"color"`          // For route
     Type          int    `json:"type"`           // For route
 }
 
@@ -227,13 +240,17 @@ type MbtaPrediction struct {
 type MbtaRouteType int
 
 const (
-    MbtaRouteTypeRedLine MbtaRouteType = iota
+    MbtaRouteTypeUnknown MbtaRouteType = iota
+    MbtaRouteTypeLightRail
+    MbtaRouteTypeHeavyRail
+    MbtaRouteTypeCommuterRail
     MbtaRouteTypeBus
 )
 
 type MbtaRoute struct {
-    Type MbtaRouteType
-    Id   string
+    Type  MbtaRouteType
+    Id    string
+    Color string
 }
 
 type MbtaTrip struct {

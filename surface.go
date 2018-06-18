@@ -1,7 +1,9 @@
 package main
 
 import (
+    "encoding/hex"
     "errors"
+    "fmt"
 )
 
 type Surface struct {
@@ -108,4 +110,17 @@ func (s *Surface) DrawBox(c Color, x int, y int, width int, height int) {
             s.SetValue(i, j, c)
         }
     }
+}
+
+func ColorFromHex(s string) Color {
+    rStr := s[0:2]
+    r, rErr := hex.DecodeString(rStr)
+    gStr := s[2:4]
+    g, gErr := hex.DecodeString(gStr)
+    bStr := s[4:6]
+    b, bErr := hex.DecodeString(bStr)
+    if rErr != nil || gErr != nil || bErr != nil {
+        fmt.Printf("Error parsing color %s to RGB.")
+    }
+    return Color{r[0], g[0], b[0]}
 }
