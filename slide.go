@@ -7,6 +7,7 @@ import (
     "net/http"
     "os"
     "io/ioutil"
+    "image/color"
 )
 
 type Slide interface {
@@ -16,7 +17,7 @@ type Slide interface {
 
 // Display a quick error message on screen
 func ShowError(s *Surface, space int, code int) {
-    yellow := Color{255, 255, 0}
+    yellow := color.RGBA{255, 255, 0, 255}
     s.Clear()
     msg := fmt.Sprintf("E #%02d-%02d", space, code)
     s.WriteString(msg, yellow, ALIGN_LEFT, 0, 0)

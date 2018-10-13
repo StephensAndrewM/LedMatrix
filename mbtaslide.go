@@ -7,6 +7,7 @@ import (
     "sort"
     "strings"
     "time"
+    "image/color"
 )
 
 type MbtaSlide struct {
@@ -145,8 +146,8 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
 
 func (this *MbtaSlide) Draw(s *Surface) {
     s.Clear()
-    white := Color{255, 255, 255}
-    yellow := Color{255, 255, 0}
+    white := color.RGBA{255, 255, 255, 255}
+    yellow := color.RGBA{255, 255, 0, 255}
 
     s.WriteString(this.StationName, yellow, ALIGN_CENTER, s.Width/2, 1)
 

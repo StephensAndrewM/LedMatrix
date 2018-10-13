@@ -71,7 +71,7 @@ var initSocket = function() {
 	    }
 	    refreshInterval = window.setInterval(function() {
 	    	initSocket();
-	    }, 5000)
+	    }, 500)
 	}
 }
 

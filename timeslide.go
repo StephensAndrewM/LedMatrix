@@ -3,6 +3,7 @@ package main
 import (
     "strings"
     "time"
+    "image/color"
 )
 
 type TimeSlide struct {
@@ -22,8 +23,8 @@ func (sl TimeSlide) Draw(s *Surface) {
     t := time.Now()
     l1 := strings.ToUpper(t.Format("Jan 2"))
     l2 := t.Format("3:04:05 PM")
-    c1 := Color{255, 255, 255}
-    c2 := Color{255, 255, 0}
+    c1 := color.RGBA{255, 255, 255, 255}
+    c2 := color.RGBA{255, 255, 0, 255}
     s.WriteString(l1, c1, ALIGN_CENTER, s.Midpoint, 8)
     s.WriteString(l2, c2, ALIGN_CENTER, s.Midpoint, 16)
 }

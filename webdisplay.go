@@ -13,7 +13,6 @@ type WebDisplay struct {
 
 func NewWebDisplay() *WebDisplay {
 	d := new(WebDisplay)
-	fmt.Println("Initialized web display")
 	return d
 }
 

@@ -4,13 +4,14 @@ import (
     "encoding/hex"
     "errors"
     "fmt"
+    "image/color"
 )
 
 type Surface struct {
     Width    int
     Height   int
     Midpoint int
-    Grid     [][]Color
+    Grid     [][]color.RGBA
     glyphs   *GlyphService
 }
 
@@ -19,18 +20,12 @@ func NewSurface(width, height int) *Surface {
     s.Width = width
     s.Midpoint = width / 2
     s.Height = height
-    s.Grid = make([][]Color, height)
+    s.Grid = make([][]color.RGBA, height)
     for i := range s.Grid {
-        s.Grid[i] = make([]Color, width)
+        s.Grid[i] = make([]color.RGBA, width)
     }
     s.glyphs = NewGlyphService()
     return s
-}
-
-type Color struct {
-    R byte
-    G byte
-    B byte
 }
 
 type Alignment int
@@ -41,14 +36,14 @@ const (
     ALIGN_RIGHT
 )
 
-func (s *Surface) GetValue(x, y int) (Color, error) {
+func (s *Surface) GetValue(x, y int) (color.RGBA, error) {
     if x < 0 || x >= s.Width || y < 0 || y >= s.Height {
-        return Color{}, errors.New("Surface.GetValue out of bounds.")
+        return color.RGBA{}, errors.New("Surface.GetValue out of bounds.")
     }
     return s.Grid[y][x], nil
 }
 
-func (s *Surface) SetValue(x, y int, p Color) error {
+func (s *Surface) SetValue(x, y int, p color.RGBA) error {
     // fmt.Printf("Attempting to set (%d,%d) to %s", x, y, p)
     if x < 0 || x >= s.Width || y < 0 || y >= s.Height {
         return errors.New("Surface.SetValue out of bounds.")
@@ -57,7 +52,7 @@ func (s *Surface) SetValue(x, y int, p Color) error {
     return nil
 }
 
-func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int) {
+func (s *Surface) WriteString(str string, c color.RGBA, align Alignment, x int, y int) {
     glyphs := make([]Glyph, len(str))
     width := 0
     for i, char := range str {
@@ -85,7 +80,7 @@ func (s *Surface) WriteString(str string, c Color, align Alignment, x int, y int
     }
 }
 
-func (s *Surface) WriteStringBoxed(str string, c Color, align Alignment, x int, y int, max int) {
+func (s *Surface) WriteStringBoxed(str string, c color.RGBA, align Alignment, x int, y int, max int) {
     glyphs := make([]Glyph, len(str))
     width := 0
     for i, char := range str {
@@ -117,11 +112,11 @@ func (s *Surface) WriteStringBoxed(str string, c Color, align Alignment, x int, 
     }
 
     // Draw the debug bounding box over the characters
-    // aqua := Color{0, 255, 255}
+    // aqua := color.RGBA{0, 255, 255, 255}
     // s.DrawEmptyBox(aqua, x, y, max, 7)
 }
 
-func (s *Surface) WriteGlyph(g Glyph, c Color, x int, y int) {
+func (s *Surface) WriteGlyph(g Glyph, c color.RGBA, x int, y int) {
     for j, row := range g.Layout {
         for i, val := range row {
             if val != 0 {
@@ -132,7 +127,7 @@ func (s *Surface) WriteGlyph(g Glyph, c Color, x int, y int) {
 }
 
 func (s *Surface) Clear() {
-    blank := Color{0, 0, 0}
+    blank := color.RGBA{0, 0, 0, 255}
     for j := 0; j < s.Height; j++ {
         for i := 0; i < s.Width; i++ {
             s.SetValue(i, j, blank)
@@ -140,7 +135,7 @@ func (s *Surface) Clear() {
     }
 }
 
-func (s *Surface) DrawBox(c Color, x int, y int, width int, height int) {
+func (s *Surface) DrawBox(c color.RGBA, x int, y int, width int, height int) {
     for j := y; j < y+height; j++ {
         for i := x; i < x+width; i++ {
             s.SetValue(i, j, c)
@@ -148,7 +143,7 @@ func (s *Surface) DrawBox(c Color, x int, y int, width int, height int) {
     }
 }
 
-func (s *Surface) DrawEmptyBox(c Color, x int, y int, width int, height int) {
+func (s *Surface) DrawEmptyBox(c color.RGBA, x int, y int, width int, height int) {
     for j := y; j < y+height; j++ {
         if j == y || j == y+height-1 {
             for i := x; i < x+width; i++ {
@@ -160,7 +155,7 @@ func (s *Surface) DrawEmptyBox(c Color, x int, y int, width int, height int) {
     }
 }
 
-func ColorFromHex(s string) Color {
+func ColorFromHex(s string) color.RGBA {
     rStr := s[0:2]
     r, rErr := hex.DecodeString(rStr)
     gStr := s[2:4]
@@ -170,5 +165,5 @@ func ColorFromHex(s string) Color {
     if rErr != nil || gErr != nil || bErr != nil {
         fmt.Printf("Error parsing color %s to RGB.")
     }
-    return Color{r[0], g[0], b[0]}
+    return color.RGBA{r[0], g[0], b[0], 255}
 }

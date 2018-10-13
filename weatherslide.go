@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "fmt"
     "time"
+    "image/color"
 )
 
 type WeatherSlide struct {
@@ -60,8 +61,8 @@ func (this *WeatherSlide) Preload() {
 
 func (this *WeatherSlide) Draw(s *Surface) {
     s.Clear()
-    white := Color{255, 255, 255}
-    yellow := Color{255, 255, 0}
+    white := color.RGBA{255, 255, 255, 255}
+    yellow := color.RGBA{255, 255, 0, 255}
     
     const dayLabelXOffset = 48
     const tempXOffset = 82
@@ -88,7 +89,7 @@ func (this *WeatherSlide) Draw(s *Surface) {
 }
 
 func (this *WeatherSlide) WriteWeatherString(s *Surface, condition string, yOffset int) {
-    white := Color{255, 255, 255}
+    white := color.RGBA{255, 255, 255, 255}
     const conditionXOffset = 54
     icon, ok := WEATHER_API_ICON_MAP[condition]
     if ok {

@@ -1,5 +1,9 @@
 package main
 
+import (
+    "image/color"
+)
+
 type GlyphTestSlide struct {
     Test GlyphTestType
 }
@@ -23,7 +27,7 @@ func (sl *GlyphTestSlide) Preload() {
 
 func (sl *GlyphTestSlide) Draw(s *Surface) {
     s.Clear()
-    c := Color{255, 255, 255}
+    c := color.RGBA{255, 255, 255, 0}
     if sl.Test == TEST_LETTERS {
         s.WriteString("THE QUICK BROWN FOX", c, ALIGN_CENTER, s.Midpoint, 0)
         s.WriteString("JUMPS OVER THE LAZY DOG", c, ALIGN_CENTER, s.Midpoint, 8)
