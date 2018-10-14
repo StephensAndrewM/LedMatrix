@@ -3,25 +3,27 @@ package main
 import (
 	"fmt"
 	"time"
+    "image"
 )
 
 const PRELOAD_SEC = 2
 const SEC_PER_SLIDE = 15
-const SURFACE_WIDTH = 128
-const SURFACE_HEIGHT = 32
+const SCREEN_WIDTH = 128
+const SCREEN_HEIGHT = 32
 const RELOAD_INTERVAL = 30
+const DEBUG_DRAW = false
 
 func main() {
-	// Create the physical display device
+    // Set up the glyph mappings
+    InitGlyphs()
+
+    // Set up a disply and run the slides
 	d := NewWebDisplay()
 	d.Initialize()
-
-	// Create the virtual drawing surface
-	s := NewSurface(SURFACE_WIDTH, SURFACE_HEIGHT)
-	RunMultiSlide(d, s)
+	RunMultiSlide(d)
 }
 
-func RunSingleSlide(d Display, s *Surface) {
+func RunSingleSlide(d Display) {
 	slide := NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK)
 	fmt.Printf("Initially loading slide\n")
 	go slide.Preload()
@@ -29,8 +31,9 @@ func RunSingleSlide(d Display, s *Surface) {
 
 	elapsedTime := 0
 	for {
-		slide.Draw(s)
-		d.Redraw(s)
+        img := image.NewRGBA(image.Rect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT))
+		slide.Draw(img)
+		d.Redraw(img)
 		elapsedTime++
 		// Call preload() again if it's been long enough
 		if elapsedTime >= RELOAD_INTERVAL {
@@ -43,7 +46,7 @@ func RunSingleSlide(d Display, s *Surface) {
 
 }
 
-func RunMultiSlide(d Display, s *Surface) {
+func RunMultiSlide(d Display) {
 	// Get all of the slides we'll be using
 	slides := GetAllSlides()
 
@@ -54,8 +57,9 @@ func RunMultiSlide(d Display, s *Surface) {
 
 	// Main loop
 	for {
-		currentSlide.Draw(s)
-		d.Redraw(s)
+        img := image.NewRGBA(image.Rect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT))
+		currentSlide.Draw(img)
+		d.Redraw(img)
 		elapsedTime++
 
 		// Preload what will be the next slide concurrently

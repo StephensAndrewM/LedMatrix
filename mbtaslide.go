@@ -7,6 +7,7 @@ import (
     "sort"
     "strings"
     "time"
+    "image"
     "image/color"
 )
 
@@ -14,7 +15,13 @@ type MbtaSlide struct {
     StationName string
     HttpHelper  *HttpHelper
     Predictions []MbtaPrediction
+
+    // Status of preloading
+    LastFetchHttpErr bool
+    LastFetchJsonErr bool
 }
+
+const MBTA_SLIDE_ERROR_SPACE = 3
 
 const MBTA_STATION_ID_DAVIS = "place-davis"
 const MBTA_STATION_ID_PARK = "place-pktrm"
@@ -42,13 +49,15 @@ func NewMbtaSlide(stationId, stationName string) *MbtaSlide {
 }
 
 func (this *MbtaSlide) Preload() {
+    this.LastFetchHttpErr = false
+    this.LastFetchJsonErr = false
 
     // Load live Data from MBTA
     respBytes, ok := this.HttpHelper.Fetch()
     if !ok {
         fmt.Printf("Error loading MBTA data\n")
+        this.LastFetchHttpErr = true
         return
-        // TODO Display error on screen
     }
 
     // Parse response to JSON
@@ -56,8 +65,8 @@ func (this *MbtaSlide) Preload() {
     jsonErr := json.Unmarshal(respBytes, &respData)
     if jsonErr != nil {
         fmt.Printf("Error interpreting MBTA data: %s\n", jsonErr)
+        this.LastFetchJsonErr = true
         return
-        // TODO Display error on screen
     }
 
     this.ParsePredictions(respData)
@@ -144,12 +153,22 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
     return m
 }
 
-func (this *MbtaSlide) Draw(s *Surface) {
-    s.Clear()
+func (this *MbtaSlide) Draw(img *image.RGBA) {
+
+    // Stop immediately if we have errors
+    if !this.LastFetchHttpErr {
+        DrawError(img, MBTA_SLIDE_ERROR_SPACE, 1)
+        return
+    }
+    if !this.LastFetchJsonErr {
+        DrawError(img, MBTA_SLIDE_ERROR_SPACE, 2)
+        return
+    }
+
     white := color.RGBA{255, 255, 255, 255}
     yellow := color.RGBA{255, 255, 0, 255}
 
-    s.WriteString(this.StationName, yellow, ALIGN_CENTER, s.Width/2, 1)
+    WriteString(img, this.StationName, yellow, ALIGN_CENTER, GetLeftOfCenterX(img), 1)
 
     if len(this.Predictions) == 0 {
         return
@@ -169,10 +188,10 @@ func (this *MbtaSlide) Draw(s *Surface) {
         }
 
         if p.Route.Type == MbtaRouteTypeBus {
-            s.WriteString(p.Route.Id, yellow, ALIGN_CENTER, 5, y)
+            WriteString(img, p.Route.Id, yellow, ALIGN_CENTER, 5, y)
         } else {
             lineColor := ColorFromHex(p.Route.Color)
-            s.DrawBox(lineColor, 0, y, 11, 7)
+            DrawBox(img, lineColor, 0, y, 11, 7)
         }
 
         // Size of box is different based on how many digits to display
@@ -183,11 +202,12 @@ func (this *MbtaSlide) Draw(s *Surface) {
 
         // Destination
         dest := strings.ToUpper(p.Destination)
-        s.WriteStringBoxed(dest, white, ALIGN_LEFT, 12, y, destWidth)
+        WriteStringBoxed(img, dest, white, ALIGN_LEFT, 12, y, destWidth)
 
         // Time estimate
         estStr := fmt.Sprintf("%d_min", estMin)
-        s.WriteString(estStr, white, ALIGN_RIGHT, s.Width-1, y)
+        imgWidth := img.Bounds().Dx()
+        WriteString(img, estStr, white, ALIGN_RIGHT, imgWidth-1, y)
 
         n++
         // We can't display more than 3 predictions on screen so stop

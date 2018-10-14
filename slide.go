@@ -7,30 +7,22 @@ import (
     "net/http"
     "os"
     "io/ioutil"
-    "image/color"
+    "image"
 )
 
 type Slide interface {
     Preload()
-    Draw(s *Surface)
-}
-
-// Display a quick error message on screen
-func ShowError(s *Surface, space int, code int) {
-    yellow := color.RGBA{255, 255, 0, 255}
-    s.Clear()
-    msg := fmt.Sprintf("E #%02d-%02d", space, code)
-    s.WriteString(msg, yellow, ALIGN_LEFT, 0, 0)
+    Draw(base *image.RGBA)
 }
 
 type HttpHelper struct {
     // Object settings
-    BaseUrl         string
-    RefreshInternal time.Duration
+    BaseUrl             string
+    RefreshInternal     time.Duration
 
     // Internal vars
-    LastFetchTime  time.Time
-    CachedResponse []byte
+    LastFetchTime       time.Time
+    CachedResponse      []byte
 }
 
 func NewHttpHelper(baseUrl string, refreshInterval time.Duration) *HttpHelper {
@@ -50,7 +42,6 @@ func (this *HttpHelper) Fetch() ([]byte, bool) {
     if httpErr != nil {
         fmt.Printf("Error loading data: %s\n", httpErr)
         return nil, false
-        // TODO Display error on screen
     }
 
     respBuf := new(bytes.Buffer)

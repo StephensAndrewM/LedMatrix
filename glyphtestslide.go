@@ -1,6 +1,7 @@
 package main
 
 import (
+    "image"
     "image/color"
 )
 
@@ -25,17 +26,17 @@ func (sl *GlyphTestSlide) Preload() {
 
 }
 
-func (sl *GlyphTestSlide) Draw(s *Surface) {
-    s.Clear()
-    c := color.RGBA{255, 255, 255, 0}
+func (sl *GlyphTestSlide) Draw(img *image.RGBA) {
+    midpoint := GetLeftOfCenterX(img)
+    c := color.RGBA{255, 255, 255, 255}
     if sl.Test == TEST_LETTERS {
-        s.WriteString("THE QUICK BROWN FOX", c, ALIGN_CENTER, s.Midpoint, 0)
-        s.WriteString("JUMPS OVER THE LAZY DOG", c, ALIGN_CENTER, s.Midpoint, 8)
-        s.WriteString("the quick brown fox", c, ALIGN_CENTER, s.Midpoint, 16)
-        s.WriteString("jumps over the lazy dog", c, ALIGN_CENTER, s.Midpoint, 24)
+        WriteString(img, "THE QUICK BROWN FOX", c, ALIGN_CENTER, midpoint, 0)
+        WriteString(img, "JUMPS OVER THE LAZY DOG", c, ALIGN_CENTER, midpoint, 8)
+        WriteString(img, "the quick brown fox", c, ALIGN_CENTER, midpoint, 16)
+        WriteString(img, "jumps over the lazy dog", c, ALIGN_CENTER, midpoint, 24)
 
     } else if sl.Test == TEST_NUMSYM {
-        s.WriteString("1234567890", c, ALIGN_CENTER, s.Midpoint, 4)
-        s.WriteString("1/2 30° ❤ 6:30", c, ALIGN_CENTER, s.Midpoint, 20)
+        WriteString(img, "1234567890", c, ALIGN_CENTER, midpoint, 4)
+        WriteString(img, "1/2 30° ❤ 6:30", c, ALIGN_CENTER, midpoint, 20)
     }
 }

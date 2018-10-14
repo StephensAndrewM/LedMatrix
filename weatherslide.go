@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "fmt"
     "time"
+    "image"
     "image/color"
 )
 
@@ -13,6 +14,7 @@ type WeatherSlide struct {
 }
 
 const SUNNYVALE_ZIP = 94086
+const BOSTON_ZIP = 02114
 
 var WEATHER_API_ICON_MAP = map[string]string{
     // TODO fill this out with all possible icons
@@ -25,25 +27,24 @@ var WEATHER_API_ICON_MAP = map[string]string{
 }
 
 func NewWeatherSlide(zipCode int) *WeatherSlide {
-    this := new(WeatherSlide)
+    sl := new(WeatherSlide)
 
     // Set up HTTP fetcher
     url := fmt.Sprintf("http://api.wunderground.com/api"+
         "/%s/conditions/forecast/q/%d.json", WEATHER_API_KEY, zipCode)
     refresh := 60 * time.Second
-    this.HttpHelper = NewHttpHelper(url, refresh)
+    sl.HttpHelper = NewHttpHelper(url, refresh)
     
-    return this
+    return sl
 }
 
 func (this *WeatherSlide) Preload() {
 
-    // Load live Data from MBTA
+    // Load live Data from API
     respBytes, ok := this.HttpHelper.Fetch()
     if !ok {
-        fmt.Printf("Error loading Weather data\n")
+        fmt.Printf("Error loading weather data\n")
         return
-        // TODO Display error on screen
     }
 
     // Parse response to JSON
@@ -52,48 +53,46 @@ func (this *WeatherSlide) Preload() {
     if jsonErr != nil {
         fmt.Printf("Error interpreting Weather data: %s\n", jsonErr)
         return
-        // TODO Display error on screen
     }
     fmt.Printf("Weather result is %+v", respData)
 
     this.Weather = respData
 }
 
-func (this *WeatherSlide) Draw(s *Surface) {
-    s.Clear()
+func (this *WeatherSlide) Draw(img *image.RGBA) {
     white := color.RGBA{255, 255, 255, 255}
     yellow := color.RGBA{255, 255, 0, 255}
     
     const dayLabelXOffset = 48
     const tempXOffset = 82
-    s.WriteString("Now:", yellow, ALIGN_RIGHT, dayLabelXOffset, 2)
-    this.WriteWeatherString(s, this.Weather.Observations.Icon, 2)
-    s.WriteString(
+    WriteString(img, "Now:", yellow, ALIGN_RIGHT, dayLabelXOffset, 2)
+    this.WriteWeatherString(img, this.Weather.Observations.Icon, 2)
+    WriteString(img, 
         fmt.Sprintf("%.1f°", this.Weather.Observations.TempF), white, ALIGN_LEFT, tempXOffset, 2)
 
-    s.WriteString("Tomorrow:", yellow, ALIGN_RIGHT, dayLabelXOffset, 12)
-    this.WriteWeatherString(s, this.Weather.Forecast.SimpleForecast.ForecastDay[0].Icon, 12)
-    s.WriteString(
+    WriteString(img, "Tomorrow:", yellow, ALIGN_RIGHT, dayLabelXOffset, 12)
+    this.WriteWeatherString(img, this.Weather.Forecast.SimpleForecast.ForecastDay[0].Icon, 12)
+    WriteString(img, 
         fmt.Sprintf("%s°/%s°", 
             this.Weather.Forecast.SimpleForecast.ForecastDay[0].High.Fahrenheit,
             this.Weather.Forecast.SimpleForecast.ForecastDay[0].Low.Fahrenheit), 
         white, ALIGN_LEFT, tempXOffset, 12)
 
-    s.WriteString(this.Weather.Forecast.SimpleForecast.ForecastDay[1].Date.Weekday + ":", yellow, ALIGN_RIGHT, dayLabelXOffset, 22)
-    this.WriteWeatherString(s, this.Weather.Forecast.SimpleForecast.ForecastDay[1].Icon, 22)
-        s.WriteString(
+    WriteString(img, this.Weather.Forecast.SimpleForecast.ForecastDay[1].Date.Weekday + ":", yellow, ALIGN_RIGHT, dayLabelXOffset, 22)
+    this.WriteWeatherString(img, this.Weather.Forecast.SimpleForecast.ForecastDay[1].Icon, 22)
+        WriteString(img, 
         fmt.Sprintf("%s°/%s°", 
             this.Weather.Forecast.SimpleForecast.ForecastDay[1].High.Fahrenheit,
             this.Weather.Forecast.SimpleForecast.ForecastDay[1].Low.Fahrenheit), 
         white, ALIGN_LEFT, tempXOffset, 22)
 }
 
-func (this *WeatherSlide) WriteWeatherString(s *Surface, condition string, yOffset int) {
+func (this *WeatherSlide) WriteWeatherString(img *image.RGBA, condition string, yOffset int) {
     white := color.RGBA{255, 255, 255, 255}
     const conditionXOffset = 54
     icon, ok := WEATHER_API_ICON_MAP[condition]
     if ok {
-        s.WriteString(icon, white, ALIGN_LEFT, conditionXOffset, yOffset)
+        WriteString(img, icon, white, ALIGN_LEFT, conditionXOffset, yOffset)
     } else {
         fmt.Printf("Unknown condition %s\n", condition)
     }

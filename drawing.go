@@ -2,31 +2,10 @@ package main
 
 import (
     "encoding/hex"
-    "errors"
     "fmt"
+    "image"
     "image/color"
 )
-
-type Surface struct {
-    Width    int
-    Height   int
-    Midpoint int
-    Grid     [][]color.RGBA
-    glyphs   *GlyphService
-}
-
-func NewSurface(width, height int) *Surface {
-    s := new(Surface)
-    s.Width = width
-    s.Midpoint = width / 2
-    s.Height = height
-    s.Grid = make([][]color.RGBA, height)
-    for i := range s.Grid {
-        s.Grid[i] = make([]color.RGBA, width)
-    }
-    s.glyphs = NewGlyphService()
-    return s
-}
 
 type Alignment int
 
@@ -36,27 +15,11 @@ const (
     ALIGN_RIGHT
 )
 
-func (s *Surface) GetValue(x, y int) (color.RGBA, error) {
-    if x < 0 || x >= s.Width || y < 0 || y >= s.Height {
-        return color.RGBA{}, errors.New("Surface.GetValue out of bounds.")
-    }
-    return s.Grid[y][x], nil
-}
-
-func (s *Surface) SetValue(x, y int, p color.RGBA) error {
-    // fmt.Printf("Attempting to set (%d,%d) to %s", x, y, p)
-    if x < 0 || x >= s.Width || y < 0 || y >= s.Height {
-        return errors.New("Surface.SetValue out of bounds.")
-    }
-    s.Grid[y][x] = p
-    return nil
-}
-
-func (s *Surface) WriteString(str string, c color.RGBA, align Alignment, x int, y int) {
+func WriteString(img *image.RGBA, str string, c color.RGBA, align Alignment, x int, y int) {
     glyphs := make([]Glyph, len(str))
     width := 0
     for i, char := range str {
-        g := s.glyphs.GetGlyph(char)
+        g := GetGlyph(char)
         width += g.Width + 1
         glyphs[i] = g
     }
@@ -75,16 +38,16 @@ func (s *Surface) WriteString(str string, c color.RGBA, align Alignment, x int, 
 
     offsetX := 0
     for _, g := range glyphs {
-        s.WriteGlyph(g, c, originX+offsetX, y)
+        WriteGlyph(img, g, c, originX+offsetX, y)
         offsetX += g.Width + 1
     }
 }
 
-func (s *Surface) WriteStringBoxed(str string, c color.RGBA, align Alignment, x int, y int, max int) {
+func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment, x int, y int, max int) {
     glyphs := make([]Glyph, len(str))
     width := 0
     for i, char := range str {
-        g := s.glyphs.GetGlyph(char)
+        g := GetGlyph(char)
         width += g.Width + 1
         // If we exceed how much the box can hold, stop
         if width > max {
@@ -107,52 +70,51 @@ func (s *Surface) WriteStringBoxed(str string, c color.RGBA, align Alignment, x 
 
     offsetX := 0
     for _, g := range glyphs {
-        s.WriteGlyph(g, c, originX+offsetX, y)
+        WriteGlyph(img, g, c, originX+offsetX, y)
         offsetX += g.Width + 1
     }
 
     // Draw the debug bounding box over the characters
-    // aqua := color.RGBA{0, 255, 255, 255}
-    // s.DrawEmptyBox(aqua, x, y, max, 7)
+    if DEBUG_DRAW {
+        aqua := color.RGBA{0, 255, 255, 255}
+        DrawEmptyBox(img, aqua, x, y, max, 7)
+    }
 }
 
-func (s *Surface) WriteGlyph(g Glyph, c color.RGBA, x int, y int) {
+func WriteGlyph(img *image.RGBA, g Glyph, c color.RGBA, x int, y int) {
     for j, row := range g.Layout {
         for i, val := range row {
             if val != 0 {
-                s.SetValue(x+int(i), y+int(j), c)
+                img.SetRGBA(x+int(i), y+int(j), c)
             }
         }
     }
 }
 
-func (s *Surface) Clear() {
-    blank := color.RGBA{0, 0, 0, 255}
-    for j := 0; j < s.Height; j++ {
-        for i := 0; i < s.Width; i++ {
-            s.SetValue(i, j, blank)
-        }
-    }
-}
-
-func (s *Surface) DrawBox(c color.RGBA, x int, y int, width int, height int) {
+func DrawBox(img *image.RGBA, c color.RGBA, x int, y int, width int, height int) {
     for j := y; j < y+height; j++ {
         for i := x; i < x+width; i++ {
-            s.SetValue(i, j, c)
+            img.SetRGBA(i, j, c)
         }
     }
 }
 
-func (s *Surface) DrawEmptyBox(c color.RGBA, x int, y int, width int, height int) {
+func DrawEmptyBox(img *image.RGBA, c color.RGBA, x int, y int, width int, height int) {
     for j := y; j < y+height; j++ {
         if j == y || j == y+height-1 {
             for i := x; i < x+width; i++ {
-                s.SetValue(i, j, c)
+                img.SetRGBA(i, j, c)
             }
         }
-        s.SetValue(x, j, c)
-        s.SetValue(x+width, j, c)
+        img.SetRGBA(x, j, c)
+        img.SetRGBA(x+width, j, c)
     }
+}
+
+func DrawError(img *image.RGBA, space int, code int) {
+    yellow := color.RGBA{255, 255, 0, 255}
+    msg := fmt.Sprintf("E #%02d-%02d", space, code)
+    WriteString(img, msg, yellow, ALIGN_LEFT, 0, 0)
 }
 
 func ColorFromHex(s string) color.RGBA {
@@ -166,4 +128,8 @@ func ColorFromHex(s string) color.RGBA {
         fmt.Printf("Error parsing color %s to RGB.")
     }
     return color.RGBA{r[0], g[0], b[0], 255}
+}
+
+func GetLeftOfCenterX(img *image.RGBA) int {
+    return img.Bounds().Dx() / 2
 }

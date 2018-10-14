@@ -1,6 +1,10 @@
 package main
 
+import (
+    "image"
+)
+
 type Display interface {
 	Initialize()
-	Redraw(s *Surface)
+	Redraw(img *image.RGBA)
 }

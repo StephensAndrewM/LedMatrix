@@ -1,31 +1,32 @@
 package main
 
+import (
+    "fmt"
+)
+
 type Glyph struct {
     Character rune
     Width     int
     Layout    [][]uint8
 }
 
-type GlyphService struct {
-    Glpyhs  map[rune]Glyph
-    Unknown Glyph
-}
+var glyphSet map[rune]Glyph
 
-func (s *GlyphService) Register(c rune,layout [][]uint8) {
+func RegisterGlyph(c rune, layout [][]uint8) {
     g := Glyph{}
     g.Character = c
     g.Width = len(layout[0])
     g.Layout = layout
-    s.Glpyhs[c] = g
+    glyphSet[c] = g
 }
 
-func NewGlyphService() *GlyphService {
+func InitGlyphs() {
 
-    s := new(GlyphService)
-    s.Glpyhs = make(map[rune]Glyph)
+    // Initialize the map
+    glyphSet = make(map[rune]Glyph)
 
     // Uppercase Letters
-    s.Register('A', [][]uint8{
+    RegisterGlyph('A', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -33,7 +34,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1}})
-    s.Register('B', [][]uint8{
+    RegisterGlyph('B', [][]uint8{
         {1,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -41,7 +42,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,1,1,1,0}})
-    s.Register('C', [][]uint8{
+    RegisterGlyph('C', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,0},
@@ -49,7 +50,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,0},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('D', [][]uint8{
+    RegisterGlyph('D', [][]uint8{
         {1,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -57,7 +58,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,1,1,1,0}})
-    s.Register('E', [][]uint8{
+    RegisterGlyph('E', [][]uint8{
         {1,1,1,1,1},
         {1,0,0,0,0},
         {1,0,0,0,0},
@@ -65,7 +66,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,0},
         {1,0,0,0,0},
         {1,1,1,1,1}})
-    s.Register('F', [][]uint8{
+    RegisterGlyph('F', [][]uint8{
         {1,1,1,1,1},
         {1,0,0,0,0},
         {1,0,0,0,0},
@@ -73,7 +74,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,0},
         {1,0,0,0,0},
         {1,0,0,0,0}})
-    s.Register('G', [][]uint8{
+    RegisterGlyph('G', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,0},
@@ -81,7 +82,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('H', [][]uint8{
+    RegisterGlyph('H', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -89,7 +90,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1}})
-    s.Register('I', [][]uint8{
+    RegisterGlyph('I', [][]uint8{
         {1,1,1},
         {0,1,0},
         {0,1,0},
@@ -97,7 +98,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0},
         {0,1,0},
         {1,1,1}})
-    s.Register('J', [][]uint8{
+    RegisterGlyph('J', [][]uint8{
         {0,1,1,1},
         {0,0,1,0},
         {0,0,1,0},
@@ -105,7 +106,7 @@ func NewGlyphService() *GlyphService {
         {0,0,1,0},
         {1,0,1,0},
         {0,1,0,0}})
-    s.Register('K', [][]uint8{
+    RegisterGlyph('K', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,1,0},
         {1,0,1,0,0},
@@ -113,7 +114,7 @@ func NewGlyphService() *GlyphService {
         {1,0,1,0,0},
         {1,0,0,1,0},
         {1,0,0,0,1}})
-    s.Register('L', [][]uint8{
+    RegisterGlyph('L', [][]uint8{
         {1,0,0,0},
         {1,0,0,0},
         {1,0,0,0},
@@ -121,7 +122,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0},
         {1,0,0,0},
         {1,1,1,1}})
-    s.Register('M', [][]uint8{
+    RegisterGlyph('M', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,1,0,1,1},
@@ -129,7 +130,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1}})
-    s.Register('N', [][]uint8{
+    RegisterGlyph('N', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,1,0,0,1},
@@ -137,7 +138,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,1,1},
         {1,0,0,0,1},
         {1,0,0,0,1}})
-    s.Register('O', [][]uint8{
+    RegisterGlyph('O', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -145,7 +146,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('P', [][]uint8{
+    RegisterGlyph('P', [][]uint8{
         {1,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -153,7 +154,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,0},
         {1,0,0,0,0},
         {1,0,0,0,0}})
-    s.Register('Q', [][]uint8{
+    RegisterGlyph('Q', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -161,7 +162,7 @@ func NewGlyphService() *GlyphService {
         {1,0,1,0,1},
         {1,0,0,1,0},
         {0,1,1,0,1}})
-    s.Register('R', [][]uint8{
+    RegisterGlyph('R', [][]uint8{
         {1,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -169,7 +170,7 @@ func NewGlyphService() *GlyphService {
         {1,0,1,0,0},
         {1,0,0,1,0},
         {1,0,0,0,1}})
-    s.Register('S', [][]uint8{
+    RegisterGlyph('S', [][]uint8{
         {0,1,1,1,1},
         {1,0,0,0,0},
         {1,0,0,0,0},
@@ -177,7 +178,7 @@ func NewGlyphService() *GlyphService {
         {0,0,0,0,1},
         {0,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('T', [][]uint8{
+    RegisterGlyph('T', [][]uint8{
         {1,1,1,1,1},
         {0,0,1,0,0},
         {0,0,1,0,0},
@@ -185,7 +186,7 @@ func NewGlyphService() *GlyphService {
         {0,0,1,0,0},
         {0,0,1,0,0},
         {0,0,1,0,0}})
-    s.Register('U', [][]uint8{
+    RegisterGlyph('U', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -193,7 +194,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('V', [][]uint8{
+    RegisterGlyph('V', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -201,7 +202,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {0,1,0,1,0},
         {0,0,1,0,0}})
-    s.Register('W', [][]uint8{
+    RegisterGlyph('W', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -209,7 +210,7 @@ func NewGlyphService() *GlyphService {
         {1,0,1,0,1},
         {1,0,1,0,1},
         {0,1,0,1,0}})
-    s.Register('X', [][]uint8{
+    RegisterGlyph('X', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,0,1,0},
@@ -217,7 +218,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1}})
-    s.Register('Y', [][]uint8{
+    RegisterGlyph('Y', [][]uint8{
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,0,1,0},
@@ -225,7 +226,7 @@ func NewGlyphService() *GlyphService {
         {0,0,1,0,0},
         {0,0,1,0,0},
         {0,0,1,0,0}})
-    s.Register('Z', [][]uint8{
+    RegisterGlyph('Z', [][]uint8{
         {1,1,1,1,1},
         {0,0,0,0,1},
         {0,0,0,1,0},
@@ -235,7 +236,7 @@ func NewGlyphService() *GlyphService {
         {1,1,1,1,1}})
 
     // Lowercase Letters
-    s.Register('a', [][]uint8{
+    RegisterGlyph('a', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {0,1,1,0},
@@ -243,7 +244,7 @@ func NewGlyphService() *GlyphService {
         {0,1,1,1},
         {1,0,0,1},
         {0,1,1,1}})
-    s.Register('b', [][]uint8{
+    RegisterGlyph('b', [][]uint8{
         {1,0,0,0},
         {1,0,0,0},
         {1,1,1,0},
@@ -251,7 +252,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,1},
         {1,0,0,1},
         {1,1,1,0}})
-    s.Register('c', [][]uint8{
+    RegisterGlyph('c', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {0,1,1,0},
@@ -259,7 +260,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0},
         {1,0,0,1},
         {0,1,1,0}})
-    s.Register('d', [][]uint8{
+    RegisterGlyph('d', [][]uint8{
         {0,0,0,1},
         {0,0,0,1},
         {0,1,1,1},
@@ -267,7 +268,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,1},
         {1,0,0,1},
         {0,1,1,1}})
-    s.Register('e', [][]uint8{
+    RegisterGlyph('e', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {0,1,1,0},
@@ -275,7 +276,7 @@ func NewGlyphService() *GlyphService {
         {1,1,1,1},
         {1,0,0,0},
         {0,1,1,0}})
-    s.Register('f', [][]uint8{
+    RegisterGlyph('f', [][]uint8{
         {0,0,1},
         {0,1,0},
         {0,1,0},
@@ -283,7 +284,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0},
         {0,1,0},
         {0,1,0}})
-    s.Register('g', [][]uint8{
+    RegisterGlyph('g', [][]uint8{
         {0,0,0,0,0},
         {0,1,1,1,1},
         {1,0,0,0,1},
@@ -291,7 +292,7 @@ func NewGlyphService() *GlyphService {
         {0,1,1,1,1},
         {0,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('h', [][]uint8{
+    RegisterGlyph('h', [][]uint8{
         {1,0,0,0},
         {1,0,0,0},
         {1,0,1,0},
@@ -299,7 +300,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,1},
         {1,0,0,1},
         {1,0,0,1}})
-    s.Register('i', [][]uint8{
+    RegisterGlyph('i', [][]uint8{
         {0,1,0},
         {0,0,0},
         {1,1,0},
@@ -307,7 +308,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0},
         {0,1,0},
         {1,1,1}})
-    s.Register('j', [][]uint8{
+    RegisterGlyph('j', [][]uint8{
         {0,0,0,1},
         {0,0,0,0},
         {0,0,1,1},
@@ -315,7 +316,7 @@ func NewGlyphService() *GlyphService {
         {0,0,0,1},
         {1,0,0,1},
         {0,1,1,0}})
-    s.Register('k', [][]uint8{
+    RegisterGlyph('k', [][]uint8{
         {1,0,0,0},
         {1,0,0,0},
         {1,0,0,1},
@@ -323,7 +324,7 @@ func NewGlyphService() *GlyphService {
         {1,1,0,0},
         {1,0,1,0},
         {1,0,0,1}})
-    s.Register('l', [][]uint8{
+    RegisterGlyph('l', [][]uint8{
         {1,1,0},
         {0,1,0},
         {0,1,0},
@@ -331,7 +332,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0},
         {0,1,0},
         {1,1,1}})
-    s.Register('m', [][]uint8{
+    RegisterGlyph('m', [][]uint8{
         {0,0,0,0,0},
         {0,0,0,0,0},
         {1,1,0,1,0},
@@ -339,7 +340,7 @@ func NewGlyphService() *GlyphService {
         {1,0,1,0,1},
         {1,0,0,0,1},
         {1,0,0,0,1}})
-    s.Register('n', [][]uint8{
+    RegisterGlyph('n', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {1,1,1,0},
@@ -347,7 +348,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,1},
         {1,0,0,1},
         {1,0,0,1}})
-    s.Register('o', [][]uint8{
+    RegisterGlyph('o', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {0,1,1,0},
@@ -355,7 +356,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,1},
         {1,0,0,1},
         {0,1,1,0}})
-    s.Register('p', [][]uint8{
+    RegisterGlyph('p', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {1,1,1,0},
@@ -363,7 +364,7 @@ func NewGlyphService() *GlyphService {
         {1,1,1,0},
         {1,0,0,0},
         {1,0,0,0}})
-    s.Register('q', [][]uint8{
+    RegisterGlyph('q', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {0,1,1,1},
@@ -371,7 +372,7 @@ func NewGlyphService() *GlyphService {
         {0,1,1,1},
         {0,0,0,1},
         {0,0,0,1}})
-    s.Register('r', [][]uint8{
+    RegisterGlyph('r', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {1,1,1,0},
@@ -379,7 +380,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0},
         {1,0,0,0},
         {1,0,0,0}})
-    s.Register('s', [][]uint8{
+    RegisterGlyph('s', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {0,1,1,1},
@@ -387,7 +388,7 @@ func NewGlyphService() *GlyphService {
         {0,1,1,0},
         {0,0,0,1},
         {1,1,1,0}})
-    s.Register('t', [][]uint8{
+    RegisterGlyph('t', [][]uint8{
         {0,1,0},
         {0,1,0},
         {1,1,1},
@@ -395,7 +396,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0},
         {0,1,0},
         {0,1,1}})
-    s.Register('u', [][]uint8{
+    RegisterGlyph('u', [][]uint8{
         {0,0,0,0},
         {0,0,0,0},
         {1,0,0,1},
@@ -403,7 +404,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,1},
         {1,0,0,1},
         {0,1,1,1}})
-    s.Register('v', [][]uint8{
+    RegisterGlyph('v', [][]uint8{
         {0,0,0,0,0},
         {0,0,0,0,0},
         {1,0,0,0,1},
@@ -411,7 +412,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {0,1,0,1,0},
         {0,0,1,0,0}})
-    s.Register('w', [][]uint8{
+    RegisterGlyph('w', [][]uint8{
         {0,0,0,0,0},
         {0,0,0,0,0},
         {1,0,0,0,1},
@@ -419,7 +420,7 @@ func NewGlyphService() *GlyphService {
         {1,0,1,0,1},
         {1,0,1,0,1},
         {0,1,0,1,0}})
-    s.Register('x', [][]uint8{
+    RegisterGlyph('x', [][]uint8{
         {0,0,0,0,0},
         {0,0,0,0,0},
         {1,0,0,0,1},
@@ -427,7 +428,7 @@ func NewGlyphService() *GlyphService {
         {0,0,1,0,0},
         {0,1,0,1,0},
         {1,0,0,0,1}})
-    s.Register('y', [][]uint8{
+    RegisterGlyph('y', [][]uint8{
         {0,0,0,0,0},
         {0,0,0,0,0},
         {1,0,0,0,1},
@@ -435,7 +436,7 @@ func NewGlyphService() *GlyphService {
         {0,1,1,1,1},
         {0,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('z', [][]uint8{
+    RegisterGlyph('z', [][]uint8{
         {0,0,0,0,0},
         {0,0,0,0,0},
         {1,1,1,1,1},
@@ -445,7 +446,7 @@ func NewGlyphService() *GlyphService {
         {1,1,1,1,1}})
 
     // Numbers
-    s.Register('0', [][]uint8{
+    RegisterGlyph('0', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -453,7 +454,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('1', [][]uint8{
+    RegisterGlyph('1', [][]uint8{
         {0,1,0},
         {1,1,0},
         {0,1,0},
@@ -461,7 +462,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0},
         {0,1,0},
         {1,1,1}})
-    s.Register('2', [][]uint8{
+    RegisterGlyph('2', [][]uint8{
         {0,2,2,2,0},
         {2,0,0,0,2},
         {0,0,0,0,2},
@@ -469,7 +470,7 @@ func NewGlyphService() *GlyphService {
         {0,0,2,0,0},
         {0,2,0,0,0},
         {2,2,2,2,2}})
-    s.Register('3', [][]uint8{
+    RegisterGlyph('3', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {0,0,0,0,1},
@@ -477,7 +478,7 @@ func NewGlyphService() *GlyphService {
         {0,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('4', [][]uint8{
+    RegisterGlyph('4', [][]uint8{
         {0,0,0,1,0},
         {0,0,1,1,0},
         {0,1,0,1,0},
@@ -485,7 +486,7 @@ func NewGlyphService() *GlyphService {
         {1,1,1,1,1},
         {0,0,0,1,0},
         {0,0,0,1,0}})
-    s.Register('5', [][]uint8{
+    RegisterGlyph('5', [][]uint8{
         {1,1,1,1,1},
         {1,0,0,0,0},
         {1,0,0,0,0},
@@ -493,7 +494,7 @@ func NewGlyphService() *GlyphService {
         {0,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('6', [][]uint8{
+    RegisterGlyph('6', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,0},
@@ -501,7 +502,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('7', [][]uint8{
+    RegisterGlyph('7', [][]uint8{
         {1,1,1,1,1},
         {0,0,0,0,1},
         {0,0,0,1,0},
@@ -509,7 +510,7 @@ func NewGlyphService() *GlyphService {
         {0,0,1,0,0},
         {0,0,1,0,0},
         {0,0,1,0,0}})
-    s.Register('8', [][]uint8{
+    RegisterGlyph('8', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -517,7 +518,7 @@ func NewGlyphService() *GlyphService {
         {1,0,0,0,1},
         {1,0,0,0,1},
         {0,1,1,1,0}})
-    s.Register('9', [][]uint8{
+    RegisterGlyph('9', [][]uint8{
         {0,1,1,1,0},
         {1,0,0,0,1},
         {1,0,0,0,1},
@@ -527,7 +528,7 @@ func NewGlyphService() *GlyphService {
         {0,1,1,1,0}})
 
     // Misc Symbols
-    s.Register('/', [][]uint8{
+    RegisterGlyph('/', [][]uint8{
         {0,0,1},
         {0,0,1},
         {0,1,0},
@@ -535,7 +536,7 @@ func NewGlyphService() *GlyphService {
         {0,1,0},
         {1,0,0},
         {1,0,0}})
-    s.Register(':', [][]uint8{
+    RegisterGlyph(':', [][]uint8{
         {0},
         {0},
         {1},
@@ -543,7 +544,7 @@ func NewGlyphService() *GlyphService {
         {1},
         {0},
         {0}})
-    s.Register('°', [][]uint8{
+    RegisterGlyph('°', [][]uint8{
         {1,1},
         {1,1},
         {0,0},
@@ -551,7 +552,7 @@ func NewGlyphService() *GlyphService {
         {0,0},
         {0,0},
         {0,0}})
-    s.Register('❤', [][]uint8{
+    RegisterGlyph('❤', [][]uint8{
         {0,1,1,0,1,1,0},
         {1,1,1,1,1,1,1},
         {1,1,1,1,1,1,1},
@@ -559,7 +560,7 @@ func NewGlyphService() *GlyphService {
         {0,1,1,1,1,1,0},
         {0,0,1,1,1,0,0},
         {0,0,0,1,0,0,0}})
-    s.Register('.', [][]uint8{
+    RegisterGlyph('.', [][]uint8{
         {0},
         {0},
         {0},
@@ -567,8 +568,24 @@ func NewGlyphService() *GlyphService {
         {0},
         {0},
         {1}})
+    RegisterGlyph('#', [][]uint8{
+        {0,0,0,0,0},
+        {0,1,0,1,0},
+        {1,1,1,1,1},
+        {0,1,0,1,0},
+        {1,1,1,1,1},
+        {0,1,0,1,0},
+        {0,0,0,0,0}})
+    RegisterGlyph('-', [][]uint8{
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {1,1,1},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0}})
     // Underscore represents a short space
-    s.Register('_', [][]uint8{
+    RegisterGlyph('_', [][]uint8{
         {0},
         {0},
         {0},
@@ -576,7 +593,7 @@ func NewGlyphService() *GlyphService {
         {0},
         {0},
         {0}})
-    s.Register(' ', [][]uint8{
+    RegisterGlyph(' ', [][]uint8{
         {0,0,0},
         {0,0,0},
         {0,0,0},
@@ -584,29 +601,26 @@ func NewGlyphService() *GlyphService {
         {0,0,0},
         {0,0,0},
         {0,0,0}})
-
-    // Manually set up unknown glyph (checkerboard)
-    unknown := Glyph{
-        Width: 5,
-        Layout: [][]uint8{
-            {1,0,1,0,1},
-            {0,1,0,1,0},
-            {1,0,1,0,1},
-            {0,1,0,1,0},
-            {1,0,1,0,1},
-            {0,1,0,1,0},
-            {1,0,1,0,1},
-            {0,1,0,1,0}}}
-    s.Unknown = unknown
-
-    return s
+    // U+FFFD is used when the glyph doesn't exist
+    RegisterGlyph('�', [][]uint8{
+        {1,0,1,0,1},
+        {0,1,0,1,0},
+        {1,0,1,0,1},
+        {0,1,0,1,0},
+        {1,0,1,0,1},
+        {0,1,0,1,0},
+        {1,0,1,0,1},
+        {0,1,0,1,0}})
 }
 
-func (s *GlyphService) GetGlyph(char rune) Glyph {
-    glyph, ok := s.Glpyhs[char]
+func GetGlyph(char rune) Glyph {
+    glyph, ok := glyphSet[char]
     // fmt.Println("GlyphService.GetGlyph attempting to find " + string(char))
     if !ok {
-        glyph = s.Unknown
+        glyph, ok = glyphSet['�']
+        if !ok {
+            fmt.Println("Could not load fallback character.")
+        }
     }
     return glyph
 }

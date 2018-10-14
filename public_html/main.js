@@ -38,12 +38,12 @@ var initSocket = function() {
 		context.clearRect(0, 0, canvas.width, canvas.height);
 
 	    var display = JSON.parse(e.data);
-	    for (var j = 0; j < display.Grid.length; j++) {
-	    	for (var i = 0; i < display.Grid[j].length; i++) {
-	    		var pixel = display.Grid[j][i];
-	    		var r = Math.max(pixel.R, MIN_BRIGHTNESS);
-	    		var g = Math.max(pixel.G, MIN_BRIGHTNESS);
-	    		var b = Math.max(pixel.B, MIN_BRIGHTNESS);
+	    for (var j = 0; j < display.length; j++) {
+	    	for (var i = 0; i < display[j].length; i++) {
+	    		var pixel = display[j][i];
+	    		var r = Math.max(pixel[0], MIN_BRIGHTNESS);
+	    		var g = Math.max(pixel[1], MIN_BRIGHTNESS);
+	    		var b = Math.max(pixel[2], MIN_BRIGHTNESS);
 	    		var rgb = "rgb(" + r + "," + g + "," + b + ")";
 	    		
 	    		var centerX = getCenter(i);
