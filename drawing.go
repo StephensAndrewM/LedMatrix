@@ -16,31 +16,7 @@ const (
 )
 
 func WriteString(img *image.RGBA, str string, c color.RGBA, align Alignment, x int, y int) {
-    glyphs := make([]Glyph, len(str))
-    width := 0
-    for i, char := range str {
-        g := GetGlyph(char)
-        width += g.Width + 1
-        glyphs[i] = g
-    }
-    // Remove the kerning on the last letter
-    width--
-
-    var originX int
-    switch align {
-    case ALIGN_LEFT:
-        originX = x
-    case ALIGN_RIGHT:
-        originX = x - width + 1
-    case ALIGN_CENTER:
-        originX = x - (width / 2)
-    }
-
-    offsetX := 0
-    for _, g := range glyphs {
-        WriteGlyph(img, g, c, originX+offsetX, y)
-        offsetX += g.Width + 1
-    }
+    WriteStringBoxed(img, str, c, align, x, y, 0)
 }
 
 func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment, x int, y int, max int) {
@@ -50,7 +26,7 @@ func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment
         g := GetGlyph(char)
         width += g.Width + 1
         // If we exceed how much the box can hold, stop
-        if width > max {
+        if max > 0 && width > max {
             break
         }
         glyphs[i] = g
@@ -77,7 +53,13 @@ func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment
     // Draw the debug bounding box over the characters
     if DEBUG_DRAW {
         aqua := color.RGBA{0, 255, 255, 255}
-        DrawEmptyBox(img, aqua, x, y, max, 7)
+        if max > 0 {
+            // Display the cutoff point of the text
+            DrawEmptyBox(img, aqua, originX, y, max-1, 7)
+        } else {
+            // Otherwise, just display the width of the text
+            DrawEmptyBox(img, aqua, originX, y, width-1, 7)
+        }
     }
 }
 
@@ -115,6 +97,18 @@ func DrawError(img *image.RGBA, space int, code int) {
     yellow := color.RGBA{255, 255, 0, 255}
     msg := fmt.Sprintf("E #%02d-%02d", space, code)
     WriteString(img, msg, yellow, ALIGN_LEFT, 0, 0)
+}
+
+// Map black pixels to given color, all other colors to transparent
+func DrawImageWithColorTransform(canvas *image.RGBA, source *image.RGBA, xOffset int, yOffset int, c color.RGBA) {
+    black := color.RGBA{0, 0, 0, 255}
+    for j := 0; j < source.Bounds().Dy(); j++ {
+        for i := 0; i < source.Bounds().Dx(); i++ {
+            if source.At(i, j) == black {
+                canvas.SetRGBA(i + xOffset, j + yOffset, c)
+            }
+        }
+    }
 }
 
 func ColorFromHex(s string) color.RGBA {

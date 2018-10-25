@@ -3,12 +3,12 @@ package main
 import (
     "encoding/json"
     "fmt"
+    "image"
+    "image/color"
     "math"
     "sort"
     "strings"
     "time"
-    "image"
-    "image/color"
 )
 
 type MbtaSlide struct {
@@ -16,7 +16,7 @@ type MbtaSlide struct {
     HttpHelper  *HttpHelper
     Predictions []MbtaPrediction
 
-    // Status of preloading
+    // Status of loading content
     LastFetchHttpErr bool
     LastFetchJsonErr bool
 }
@@ -49,6 +49,7 @@ func NewMbtaSlide(stationId, stationName string) *MbtaSlide {
 }
 
 func (this *MbtaSlide) Preload() {
+    // Reset errors, in case last time wasn't successful
     this.LastFetchHttpErr = false
     this.LastFetchJsonErr = false
 
@@ -156,11 +157,11 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
 func (this *MbtaSlide) Draw(img *image.RGBA) {
 
     // Stop immediately if we have errors
-    if !this.LastFetchHttpErr {
+    if this.LastFetchHttpErr {
         DrawError(img, MBTA_SLIDE_ERROR_SPACE, 1)
         return
     }
-    if !this.LastFetchJsonErr {
+    if this.LastFetchJsonErr {
         DrawError(img, MBTA_SLIDE_ERROR_SPACE, 2)
         return
     }

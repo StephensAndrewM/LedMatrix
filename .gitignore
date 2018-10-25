@@ -1,0 +1,2 @@
+# Don't save the debug outputs
+debug/*.txt

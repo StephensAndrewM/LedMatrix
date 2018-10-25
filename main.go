@@ -7,11 +7,17 @@ import (
 )
 
 const PRELOAD_SEC = 2
-const SEC_PER_SLIDE = 15
+const SEC_PER_SLIDE = 10
+// How frequently to re-call Preload() in single-slide mode
+const RELOAD_INTERVAL = 30
+
+// Screen dimensions
 const SCREEN_WIDTH = 128
 const SCREEN_HEIGHT = 32
-const RELOAD_INTERVAL = 30
+
+// Control debug settings
 const DEBUG_DRAW = false
+const DEBUG_HTTP = true
 
 func main() {
     // Set up the glyph mappings
@@ -20,11 +26,13 @@ func main() {
     // Set up a disply and run the slides
 	d := NewWebDisplay()
 	d.Initialize()
-	RunMultiSlide(d)
+	// RunMultiSlide(d)
+    RunSingleSlide(d)
 }
 
 func RunSingleSlide(d Display) {
-	slide := NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK)
+	// slide := NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK)
+    slide := NewWeatherSlide(BOSTON_LATLNG)
 	fmt.Printf("Initially loading slide\n")
 	go slide.Preload()
 	time.Sleep(1 * time.Second)
@@ -53,7 +61,6 @@ func RunMultiSlide(d Display) {
 	// Initial condition (note slide 0 is not preloaded)
 	var currentSlideId, elapsedTime int
 	currentSlide := slides[currentSlideId]
-	elapsedTime = 12
 
 	// Main loop
 	for {
@@ -88,7 +95,7 @@ func GetAllSlides() []Slide {
 		NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK),
 		NewMbtaSlide(MBTA_STATION_ID_GOVCTR, MBTA_STATION_NAME_GOVCTR),
 		NewMbtaSlide(MBTA_STATION_ID_HARVARD, MBTA_STATION_NAME_HARVARD),
-		// NewWeatherSlide(SUNNYVALE_ZIP),
+		NewWeatherSlide(BOSTON_LATLNG),
 	}
 }
 

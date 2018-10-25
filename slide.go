@@ -29,12 +29,18 @@ func NewHttpHelper(baseUrl string, refreshInterval time.Duration) *HttpHelper {
     h := new(HttpHelper)
     h.BaseUrl = baseUrl
     h.RefreshInternal = refreshInterval
+    if DEBUG_HTTP {
+        fmt.Printf("HttpHelper initialized with URL %s\n", baseUrl)
+    }
     return h
 }
 
 func (this *HttpHelper) Fetch() ([]byte, bool) {
     now := time.Now()
     if now.Before(this.LastFetchTime.Add(this.RefreshInternal)) {
+        if DEBUG_HTTP {
+            fmt.Printf("Http Fetcher: Returning cached response from %v seconds ago (interval %v)\n", now.Sub(this.LastFetchTime), this.RefreshInternal)
+        }
         return this.CachedResponse, true
     }
 
@@ -51,7 +57,9 @@ func (this *HttpHelper) Fetch() ([]byte, bool) {
     this.CachedResponse = respBuf.Bytes()
 
     // Output debug file
-    ioutil.WriteFile("debug.txt", respBuf.Bytes(), os.FileMode(770))
+    if DEBUG_HTTP {
+        ioutil.WriteFile(fmt.Sprintf("debug/%d.txt", time.Now().Unix()), respBuf.Bytes(), os.FileMode(770))
+    }
 
     return respBuf.Bytes(), true
 }
