@@ -93,6 +93,18 @@ func DrawEmptyBox(img *image.RGBA, c color.RGBA, x int, y int, width int, height
     }
 }
 
+func DrawHorizLine(img *image.RGBA, c color.RGBA, x1 int, x2 int, y int) {
+    for i := x1; i <= x2; i++ {
+        img.SetRGBA(i, y, c)
+    }
+}
+
+func DrawVertLine(img *image.RGBA, c color.RGBA, y1 int, y2 int, x int) {
+    for i := y1; i <= y2; i++ {
+        img.SetRGBA(x, i, c)
+    }
+}
+
 func DrawError(img *image.RGBA, space int, code int) {
     yellow := color.RGBA{255, 255, 0, 255}
     msg := fmt.Sprintf("E #%02d-%02d", space, code)
@@ -105,7 +117,7 @@ func DrawImageWithColorTransform(canvas *image.RGBA, source *image.RGBA, xOffset
     for j := 0; j < source.Bounds().Dy(); j++ {
         for i := 0; i < source.Bounds().Dx(); i++ {
             if source.At(i, j) == black {
-                canvas.SetRGBA(i + xOffset, j + yOffset, c)
+                canvas.SetRGBA(i+xOffset, j+yOffset, c)
             }
         }
     }
@@ -122,6 +134,17 @@ func ColorFromHex(s string) color.RGBA {
         fmt.Printf("Error parsing color %s to RGB.")
     }
     return color.RGBA{r[0], g[0], b[0], 255}
+}
+
+func ReduceColor(c color.RGBA) color.RGBA {
+    round := func(x uint8) uint8 {
+        if x > 128 {
+            return 255
+        } else {
+            return 0
+        }
+    }
+    return color.RGBA{round(c.R), round(c.G), round(c.B), 0}
 }
 
 func GetLeftOfCenterX(img *image.RGBA) int {

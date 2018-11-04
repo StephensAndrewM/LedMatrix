@@ -166,10 +166,10 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
         return
     }
 
-    white := color.RGBA{255, 255, 255, 255}
-    yellow := color.RGBA{255, 255, 0, 255}
+    textColor := color.RGBA{255, 255, 255, 255} // white
+    titleColor := color.RGBA{255, 255, 0, 255} // yellow
 
-    WriteString(img, this.StationName, yellow, ALIGN_CENTER, GetLeftOfCenterX(img), 1)
+    WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 1)
 
     if len(this.Predictions) == 0 {
         return
@@ -189,13 +189,14 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
         }
 
         if p.Route.Type == MbtaRouteTypeBus {
-            WriteString(img, p.Route.Id, yellow, ALIGN_CENTER, 5, y)
+            WriteString(img, p.Route.Id, titleColor, ALIGN_CENTER, 5, y)
         } else {
             lineColor := ColorFromHex(p.Route.Color)
-            DrawBox(img, lineColor, 0, y, 11, 7)
+            reducedLineColor := ReduceColor(lineColor)
+            DrawBox(img, reducedLineColor, 0, y, 11, 7)
         }
 
-        // Size of box is different based on how many digits to display
+        // Size of box is different based on how many time digits to display
         destWidth := 93
         if estMin > 9 {
             destWidth = 87
@@ -203,12 +204,12 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
 
         // Destination
         dest := strings.ToUpper(p.Destination)
-        WriteStringBoxed(img, dest, white, ALIGN_LEFT, 12, y, destWidth)
+        WriteStringBoxed(img, dest, textColor, ALIGN_LEFT, 12, y, destWidth)
 
         // Time estimate
         estStr := fmt.Sprintf("%d_min", estMin)
         imgWidth := img.Bounds().Dx()
-        WriteString(img, estStr, white, ALIGN_RIGHT, imgWidth-1, y)
+        WriteString(img, estStr, textColor, ALIGN_RIGHT, imgWidth-1, y)
 
         n++
         // We can't display more than 3 predictions on screen so stop
