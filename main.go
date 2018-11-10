@@ -1,17 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"time"
+    "fmt"
     "image"
+    "time"
 )
 
-const PRELOAD_SEC = 2
-const SEC_PER_SLIDE = 10
-// How frequently to re-call Preload() in single-slide mode
-const RELOAD_INTERVAL = 30
-
-// Screen dimensions
+const WELCOME_DURATION = 5 * time.Second
+const PRELOAD_DURATION = 2 * time.Second
+const DRAW_INTERVAL = 1 * time.Second
 const SCREEN_WIDTH = 128
 const SCREEN_HEIGHT = 32
 
@@ -23,86 +20,115 @@ func main() {
     // Set up the glyph mappings
     InitGlyphs()
 
-    // Set up a disply and run the slides
-	d := NewWebDisplay()
-	d.Initialize()
-	// RunMultiSlide(d)
-    RunSingleSlide(d)
+    // Set up the display
+    d := NewWebDisplay()
+    // d := NewLedDisplay()
+    d.Initialize()
+
+    config := LedSignConfig{
+        NightModeStartHour:   23,
+        NightModeEndHour:     7,
+        SlideAdvanceInterval: 15 * time.Second,
+        Slides: []Slide{
+            NewTimeSlide(),
+            NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK),
+            NewMbtaSlide(MBTA_STATION_ID_GOVCTR, MBTA_STATION_NAME_GOVCTR),
+            NewWeatherSlide(BOSTON_LATLNG),
+        },
+    }
+    RunMultiSlide(d, config)
 }
 
-func RunSingleSlide(d Display) {
-	// slide := NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK)
-    slide := NewWeatherSlide(BOSTON_LATLNG)
-	fmt.Printf("Initially loading slide\n")
-	go slide.Preload()
-	time.Sleep(1 * time.Second)
+func RunMultiSlide(d Display, config LedSignConfig) {
 
-	elapsedTime := 0
-	for {
-        img := image.NewRGBA(image.Rect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT))
-		slide.Draw(img)
-		d.Redraw(img)
-		elapsedTime++
-		// Call preload() again if it's been long enough
-		if elapsedTime >= RELOAD_INTERVAL {
-			fmt.Printf("Reloading slide\n")
-			go slide.Preload()
-			elapsedTime = 0
-		}
-		time.Sleep(1 * time.Second)
-	}
+    // Initial condition - set to display welcome slide (not preloaded)
+    var currentSlideId int
+    var currentSlide Slide
+    var timeUntilAdvance time.Duration
+    var isNextSlidePreloaded bool
 
-}
+    setInitialCondition := func() {
+        currentSlideId = -1
+        currentSlide = NewWelcomeSlide()
+        timeUntilAdvance = WELCOME_DURATION
+        isNextSlidePreloaded = false
+    }
 
-func RunMultiSlide(d Display) {
-	// Get all of the slides we'll be using
-	slides := GetAllSlides()
+    nextSlideId := func() int {
+        return (currentSlideId + 1) % len(config.Slides)
+    }
 
-	// Initial condition (note slide 0 is not preloaded)
-	var currentSlideId, elapsedTime int
-	currentSlide := slides[currentSlideId]
+    drawNightMode := func() {
+        fmt.Printf("Time is %s, sign in night mode.", time.Now().String())
+        // Create a blank image and pass it directly to display
+        img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+        d.Redraw(img)
+        // Check every hour to see if we're out of night mode
+        time.Sleep(1 * time.Hour)
+        // Reset the slide to be drawn for when night mode ends
+        setInitialCondition()
+    }
 
-	// Main loop
-	for {
-        img := image.NewRGBA(image.Rect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT))
-		currentSlide.Draw(img)
-		d.Redraw(img)
-		elapsedTime++
+    // Call the function to set initial condition on startup
+    setInitialCondition()
 
-		// Preload what will be the next slide concurrently
-		if elapsedTime == (SEC_PER_SLIDE - PRELOAD_SEC) {
-			nextSlideId := NextSlideId(currentSlideId, len(slides))
-			fmt.Printf("Preloading slide %d\n", nextSlideId)
-			go slides[nextSlideId].Preload()
-		}
+    // Main loop
+    for {
 
-		// Advance the slide when ready
-		if elapsedTime >= SEC_PER_SLIDE {
-			currentSlideId = NextSlideId(currentSlideId, len(slides))
-			elapsedTime = 0
-			currentSlide = slides[currentSlideId]
-			fmt.Printf("Advancing to slide %d\n", currentSlideId)
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
+        // If we're past the time to switch to night mode, do that instead
+        if time.Now().Hour() > config.NightModeStartHour ||
+            time.Now().Hour() < config.NightModeEndHour {
+            drawNightMode()
+            continue
+        }
 
-func GetAllSlides() []Slide {
-	return []Slide{
-		NewTimeSlide(),
-		// NewGlyphTestSlide(TEST_LETTERS),
-		// NewGlyphTestSlide(TEST_NUMSYM),
-		NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK),
-		NewMbtaSlide(MBTA_STATION_ID_GOVCTR, MBTA_STATION_NAME_GOVCTR),
-		NewMbtaSlide(MBTA_STATION_ID_HARVARD, MBTA_STATION_NAME_HARVARD),
-		NewWeatherSlide(BOSTON_LATLNG),
-	}
+        // Create a blank image, draw to it, then pass that to the display
+        img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+        currentSlide.Draw(img)
+        d.Redraw(img)
+
+        // Preload the next slide (once) in a separate thread
+        if timeUntilAdvance <= PRELOAD_DURATION && !isNextSlidePreloaded {
+            go config.Slides[nextSlideId()].Preload()
+            isNextSlidePreloaded = true
+            fmt.Printf("Preloading slide %d\n", nextSlideId())
+        }
+
+        // Advance the slide, if enough time has elapsed
+        if timeUntilAdvance <= 0 {
+            currentSlideId = nextSlideId()
+            currentSlide = config.Slides[currentSlideId]
+            timeUntilAdvance = config.SlideAdvanceInterval
+            isNextSlidePreloaded = false
+            fmt.Printf("Advancing to slide %d\n", currentSlideId)
+        }
+
+        // Wait until we're ready to redraw
+        timeUntilAdvance -= DRAW_INTERVAL
+        time.Sleep(DRAW_INTERVAL)
+    }
 }
 
 func NextSlideId(current int, total int) int {
-	current++
-	if current >= total {
-		current = 0
-	}
-	return current
+    current++
+    if current >= total {
+        current = 0
+    }
+    return current
+}
+
+type LedSignConfig struct {
+
+    // Night Mode: Sign automatically goes dark during the given time interval.
+    // Evening hour after which the sign will be enabled (24-hour format).
+    NightModeStartHour int
+    // Morning hour before which the sign will be enabled (24-hour format).
+    NightModeEndHour int
+
+    // If nonzero, how much time before slideshow should advance to next slide.
+    // Otherwise, will only stay on one slide
+    SlideAdvanceInterval time.Duration
+
+    // List of slides to display in slideshow mode, or single slide to display.
+    Slides []Slide
 }
