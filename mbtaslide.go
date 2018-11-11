@@ -22,22 +22,32 @@ type MbtaSlide struct {
 }
 
 const MBTA_SLIDE_ERROR_SPACE = 3
+// Lowest duration of prediction allowed to show
+const MBTA_ARRIVAL_THRESHOLD = 5
 
+// Station names - used in constructor
 const MBTA_STATION_ID_DAVIS = "place-davis"
 const MBTA_STATION_ID_PARK = "place-pktrm"
 const MBTA_STATION_ID_MGH = "place-chmnl"
 const MBTA_STATION_ID_GOVCTR = "place-gover"
 const MBTA_STATION_ID_HARVARD = "place-harsq"
 
-const MBTA_STATION_NAME_DAVIS = "DAVIS SQUARE"
-const MBTA_STATION_NAME_PARK = "PARK STREET"
-const MBTA_STATION_NAME_MGH = "CHARLES/MGH"
-const MBTA_STATION_NAME_GOVCTR = "GOVERNMENT CENTER"
-const MBTA_STATION_NAME_HARVARD = "HARVARD SQUARE"
+var MBTA_STATION_NAME_MAP = map[string]string{
+    MBTA_STATION_ID_DAVIS:   "DAVIS SQUARE",
+    MBTA_STATION_ID_PARK:    "PARK STREET",
+    MBTA_STATION_ID_MGH:     "CHARLES/MGH",
+    MBTA_STATION_ID_GOVCTR:  "GOVERNMENT CENTER",
+    MBTA_STATION_ID_HARVARD: "HARVARD SQUARE",
+}
 
-func NewMbtaSlide(stationId, stationName string) *MbtaSlide {
+func NewMbtaSlide(stationId string) *MbtaSlide {
     this := new(MbtaSlide)
-    this.StationName = stationName
+    name, ok := MBTA_STATION_NAME_MAP[stationId]
+    if ok != true {
+        fmt.Printf("Could not find station name for %s\n", stationId)
+        name = "?????"
+    }
+    this.StationName = name
 
     // Set up HTTP fetcher
     url := fmt.Sprintf("https://api-v3.mbta.com/predictions"+
@@ -167,7 +177,7 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
     }
 
     textColor := color.RGBA{255, 255, 255, 255} // white
-    titleColor := color.RGBA{255, 255, 0, 255} // yellow
+    titleColor := color.RGBA{255, 255, 0, 255}  // yellow
 
     WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 1)
 
@@ -183,8 +193,9 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
         // Get time estimate, and maybe skip
         est := p.Time.Sub(time.Now())
         estMin := int(math.Floor(est.Minutes()))
-        // Some predictions go negative - ignore those
-        if estMin < 0 {
+        // Low predictions aren't useful (uness we run), so don't display any
+        // trains less than X minutes away
+        if estMin < MBTA_ARRIVAL_THRESHOLD {
             continue
         }
 
