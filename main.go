@@ -26,13 +26,13 @@ func main() {
     d.Initialize()
 
     config := LedSignConfig{
-        NightModeStartHour:   23,
+        NightModeStartHour:   22,
         NightModeEndHour:     7,
         SlideAdvanceInterval: 15 * time.Second,
         Slides: []Slide{
             NewTimeSlide(),
-            NewMbtaSlide(MBTA_STATION_ID_PARK, MBTA_STATION_NAME_PARK),
-            NewMbtaSlide(MBTA_STATION_ID_GOVCTR, MBTA_STATION_NAME_GOVCTR),
+            NewMbtaSlide(MBTA_STATION_ID_MGH),
+            NewMbtaSlide(MBTA_STATION_ID_GOVCTR),
             NewWeatherSlide(BOSTON_LATLNG),
         },
     }
@@ -76,7 +76,7 @@ func RunMultiSlide(d Display, config LedSignConfig) {
     for {
 
         // If we're past the time to switch to night mode, do that instead
-        if time.Now().Hour() > config.NightModeStartHour ||
+        if time.Now().Hour() >= config.NightModeStartHour ||
             time.Now().Hour() < config.NightModeEndHour {
             drawNightMode()
             continue
