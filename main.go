@@ -14,15 +14,15 @@ const SCREEN_HEIGHT = 32
 
 // Control debug settings
 const DEBUG_DRAW = false
-const DEBUG_HTTP = true
+const DEBUG_HTTP = false
 
 func main() {
     // Set up the glyph mappings
     InitGlyphs()
 
     // Set up the display
-    d := NewWebDisplay()
-    // d := NewLedDisplay()
+    // d := NewWebDisplay()
+    d := NewLedDisplay()
     d.Initialize()
 
     config := LedSignConfig{
@@ -32,7 +32,7 @@ func main() {
         Slides: []Slide{
             NewTimeSlide(),
             NewMbtaSlide(MBTA_STATION_ID_MGH),
-            NewMbtaSlide(MBTA_STATION_ID_GOVCTR),
+            NewChristmasSlide(),
             NewWeatherSlide(BOSTON_LATLNG),
         },
     }
