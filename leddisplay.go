@@ -19,8 +19,9 @@ func NewLedDisplay() *LedDisplay {
     config.Rows = 32
     config.Cols = 64
     config.ChainLength = 2
-    config.PWMBits = 1
-    config.PWMLSBNanoseconds = 400
+    config.PWMBits = 8
+    config.Brightness = 50
+    config.ShowRefreshRate = false
     m, err := rgbmatrix.NewRGBLedMatrix(config)
     if err != nil {
         fmt.Println("Could not create hardware LED matrix.")
