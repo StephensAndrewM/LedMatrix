@@ -26,8 +26,8 @@ func main() {
     d.Initialize()
 
     config := LedSignConfig{
-        NightModeStartHour:   22,
-        NightModeEndHour:     7,
+        NightModeStartHour:   23,
+        NightModeEndHour:     5,
         SlideAdvanceInterval: 15 * time.Second,
         Slides: []Slide{
             NewTimeSlide(),
