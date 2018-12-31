@@ -29,8 +29,6 @@ func main() {
     InitGlyphs()
     InitLogger()
 
-    log.Warn("This is a test.")
-
     // Set up the display - hardware as default
     d := InitDisplay()
 
@@ -41,7 +39,6 @@ func main() {
         Slides: []Slide{
             NewTimeSlide(),
             NewMbtaSlide(MBTA_STATION_ID_MGH),
-            NewChristmasSlide(),
             NewWeatherSlide(BOSTON_LATLNG),
         },
     }
