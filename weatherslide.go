@@ -3,6 +3,7 @@ package main
 import (
     "encoding/json"
     "fmt"
+    log "github.com/sirupsen/logrus"
     "image"
     "image/color"
     "image/draw"
@@ -63,14 +64,20 @@ func NewWeatherSlide(latLng string) *WeatherSlide {
         // Open the file as binary stream
         reader, err1 := os.Open(f)
         if err1 != nil {
-            fmt.Println("Could not open image " + f)
+            log.WithFields(log.Fields{
+                "file":  f,
+                "error": err1,
+            }).Warn("Could not open image.")
             continue
         }
         defer reader.Close()
         // Attempt to convert the image to image.Image
         img, err2 := png.Decode(reader)
         if err2 != nil {
-            fmt.Println("Could not decode image " + f)
+            log.WithFields(log.Fields{
+                "file":  f,
+                "error": err2,
+            }).Warn("Could not decode image.")
             continue
         }
         // Then convert that to image.RGBA
@@ -87,7 +94,7 @@ func (this *WeatherSlide) Preload() {
     // Load live Data from API
     respBytes, ok := this.HttpHelper.Fetch()
     if !ok {
-        fmt.Printf("Error loading weather data\n")
+        log.Warn("Error loading weather data")
         this.LastFetchHttpErr = true
         return
     }
@@ -97,7 +104,9 @@ func (this *WeatherSlide) Preload() {
     var respData WeatherApiResponse
     jsonErr := json.Unmarshal(respBytes, &respData)
     if jsonErr != nil {
-        fmt.Printf("Error interpreting Weather data: %s\n", jsonErr)
+        log.WithFields(log.Fields{
+            "error": jsonErr,
+        }).Warn("Could not interpret weather JSON.")
         this.LastFetchJsonErr = true
         return
     }
@@ -106,6 +115,7 @@ func (this *WeatherSlide) Preload() {
     // Assert that the response contains what we expect
     if respData.Current.Icon == "" ||
         len(respData.Daily.Data) == 0 {
+        log.Warn("Weather response data has no data.")
         this.LastFetchDataErr = true
     }
     this.LastFetchDataErr = false
@@ -136,7 +146,9 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
         iconLeftX := WEATHER_COL_CENTER - (WEATHER_ICON_WIDTH / 2)
         DrawImageWithColorTransform(img, currentIcon, iconLeftX, 7, white)
     } else {
-        fmt.Printf("Missing icon for condition %s\n", this.Weather.Current.Icon)
+        log.WithFields(log.Fields{
+            "icon": this.Weather.Current.Icon,
+        }).Warn("Missing icon for weather condition.")
     }
     WriteString(img, fmt.Sprintf("%.1f°", this.Weather.Current.Temperature), white, ALIGN_CENTER, WEATHER_COL_CENTER, 24)
 
@@ -161,7 +173,9 @@ func (this *WeatherSlide) DrawForecast(img *image.RGBA, offsetX int, forecast We
         iconLeftX := offsetX + (WEATHER_COL_CENTER - (WEATHER_ICON_WIDTH / 2))
         DrawImageWithColorTransform(img, icon, iconLeftX, 7, aqua)
     } else {
-        fmt.Printf("Missing icon for condition %s\n", forecast.Icon)
+        log.WithFields(log.Fields{
+            "icon": this.Weather.Current.Icon,
+        }).Warn("Missing icon for weather condition.")
     }
 
     temp := fmt.Sprintf("%d°/%d°", int(forecast.High), int(forecast.Low))

@@ -3,6 +3,7 @@ package main
 import (
     "encoding/json"
     "fmt"
+    log "github.com/sirupsen/logrus"
     "image"
     "image/color"
     "math"
@@ -22,6 +23,7 @@ type MbtaSlide struct {
 }
 
 const MBTA_SLIDE_ERROR_SPACE = 3
+
 // Lowest duration of prediction allowed to show
 const MBTA_ARRIVAL_THRESHOLD = 5
 
@@ -44,7 +46,9 @@ func NewMbtaSlide(stationId string) *MbtaSlide {
     this := new(MbtaSlide)
     name, ok := MBTA_STATION_NAME_MAP[stationId]
     if ok != true {
-        fmt.Printf("Could not find station name for %s\n", stationId)
+        log.WithFields(log.Fields{
+            "stationId": stationId,
+        }).Warn("Could not find station name.")
         name = "?????"
     }
     this.StationName = name
@@ -66,7 +70,7 @@ func (this *MbtaSlide) Preload() {
     // Load live Data from MBTA
     respBytes, ok := this.HttpHelper.Fetch()
     if !ok {
-        fmt.Printf("Error loading MBTA data\n")
+        log.Warn("Error loading MBTA data.")
         this.LastFetchHttpErr = true
         return
     }
@@ -75,7 +79,9 @@ func (this *MbtaSlide) Preload() {
     var respData MbtaApiResponse
     jsonErr := json.Unmarshal(respBytes, &respData)
     if jsonErr != nil {
-        fmt.Printf("Error interpreting MBTA data: %s\n", jsonErr)
+        log.WithFields(log.Fields{
+            "error": jsonErr,
+        }).Warn("Error interpreting MBTA data.")
         this.LastFetchJsonErr = true
         return
     }

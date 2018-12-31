@@ -3,11 +3,12 @@ package main
 import (
     "bytes"
     "fmt"
-    "time"
+    log "github.com/sirupsen/logrus"
+    "image"
+    "io/ioutil"
     "net/http"
     "os"
-    "io/ioutil"
-    "image"
+    "time"
 )
 
 type Slide interface {
@@ -17,36 +18,40 @@ type Slide interface {
 
 type HttpHelper struct {
     // Object settings
-    BaseUrl             string
-    RefreshInternal     time.Duration
+    BaseUrl         string
+    RefreshInternal time.Duration
 
     // Internal vars
-    LastFetchTime       time.Time
-    CachedResponse      []byte
+    LastFetchTime  time.Time
+    CachedResponse []byte
 }
 
 func NewHttpHelper(baseUrl string, refreshInterval time.Duration) *HttpHelper {
     h := new(HttpHelper)
     h.BaseUrl = baseUrl
     h.RefreshInternal = refreshInterval
-    if DEBUG_HTTP {
-        fmt.Printf("HttpHelper initialized with URL %s\n", baseUrl)
-    }
+    log.WithFields(log.Fields{
+        "url":      baseUrl,
+        "interval": refreshInterval,
+    }).Debug("HttpHelper initialized.")
     return h
 }
 
 func (this *HttpHelper) Fetch() ([]byte, bool) {
     now := time.Now()
     if now.Before(this.LastFetchTime.Add(this.RefreshInternal)) {
-        if DEBUG_HTTP {
-            fmt.Printf("Http Fetcher: Returning cached response from %v seconds ago (interval %v)\n", now.Sub(this.LastFetchTime), this.RefreshInternal)
-        }
+        log.WithFields(log.Fields{
+            "cacheTime": this.LastFetchTime,
+            "cacheTimeDiff": now.Sub(this.LastFetchTime),
+        }).Debug("Returning cached response.")
         return this.CachedResponse, true
     }
 
     resp, httpErr := http.Get(this.BaseUrl)
     if httpErr != nil {
-        fmt.Printf("Error loading data: %s\n", httpErr)
+        log.WithFields(log.Fields{
+            "error": httpErr,
+        }).Warn("HTTP error in HttpHelper.")
         return nil, false
     }
 

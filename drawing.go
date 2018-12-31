@@ -3,6 +3,7 @@ package main
 import (
     "encoding/hex"
     "fmt"
+    log "github.com/sirupsen/logrus"
     "image"
     "image/color"
 )
@@ -131,7 +132,8 @@ func ColorFromHex(s string) color.RGBA {
     bStr := s[4:6]
     b, bErr := hex.DecodeString(bStr)
     if rErr != nil || gErr != nil || bErr != nil {
-        fmt.Printf("Error parsing color %s to RGB.")
+        log.Warn("Error parsing color %s to RGB.", s)
+        return color.RGBA{0, 0, 0, 255}
     }
     return color.RGBA{r[0], g[0], b[0], 255}
 }

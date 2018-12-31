@@ -1,8 +1,8 @@
 package main
 
 import (
-    "fmt"
     "github.com/mcuadros/go-rpi-rgb-led-matrix"
+    log "github.com/sirupsen/logrus"
     "image"
     "image/draw"
 )
@@ -24,7 +24,7 @@ func NewLedDisplay() *LedDisplay {
     config.ShowRefreshRate = false
     m, err := rgbmatrix.NewRGBLedMatrix(config)
     if err != nil {
-        fmt.Println("Could not create hardware LED matrix.")
+        log.Error("Could not create hardware LED matrix.")
         return nil
     }
     d.Matrix = m

@@ -6,6 +6,7 @@ import (
     "image/color"
     "math"
     "time"
+    log "github.com/sirupsen/logrus"
 )
 
 type ChristmasSlide struct {
@@ -25,7 +26,8 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
     g := color.RGBA{0, 255, 0, 255}
     tz, err := time.LoadLocation("America/New_York")
     if err != nil {
-        fmt.Println("Could not load time zone.")
+        // No idea why this would ever happen
+        log.Warn("Could not load time zone.")
         return
     }
     ptoDate := time.Date(2018, time.December, 21, 0, 0, 0, 0, tz)

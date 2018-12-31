@@ -1,11 +1,16 @@
 package main
 
 import (
-    "fmt"
+    "flag"
+    log "github.com/sirupsen/logrus"
     "image"
     "time"
 )
 
+var useWebDisplayFlag = flag.Bool("use_web_display", false,
+    "If true, outputs to simulator instead of hardware.")
+
+// Constants that generally don't need to be configured
 const WELCOME_DURATION = 5 * time.Second
 const PRELOAD_DURATION = 2 * time.Second
 const DRAW_INTERVAL = 1 * time.Second
@@ -17,13 +22,17 @@ const DEBUG_DRAW = false
 const DEBUG_HTTP = false
 
 func main() {
+    // Init flags for use everywhere
+    flag.Parse()
+
     // Set up the glyph mappings
     InitGlyphs()
+    InitLogger()
 
-    // Set up the display
-    // d := NewWebDisplay()
-    d := NewLedDisplay()
-    d.Initialize()
+    log.Warn("This is a test.")
+
+    // Set up the display - hardware as default
+    d := InitDisplay()
 
     config := LedSignConfig{
         NightModeStartHour:   23,
@@ -37,6 +46,22 @@ func main() {
         },
     }
     RunMultiSlide(d, config)
+}
+
+func InitDisplay() Display {
+    var d Display
+    if *useWebDisplayFlag {
+        d = NewWebDisplay()
+    } else {
+        d = NewLedDisplay()
+    }
+    d.Initialize()
+    return d
+}
+
+func InitLogger() {
+    // Don't log anything less than info
+    log.SetLevel(log.InfoLevel)
 }
 
 func RunMultiSlide(d Display, config LedSignConfig) {
@@ -59,7 +84,7 @@ func RunMultiSlide(d Display, config LedSignConfig) {
     }
 
     drawNightMode := func() {
-        fmt.Printf("Time is %s, sign in night mode.", time.Now().String())
+        log.Info("Time is %s, sign in night mode.", time.Now().String())
         // Create a blank image and pass it directly to display
         img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
         d.Redraw(img)
@@ -91,7 +116,6 @@ func RunMultiSlide(d Display, config LedSignConfig) {
         if timeUntilAdvance <= PRELOAD_DURATION && !isNextSlidePreloaded {
             go config.Slides[nextSlideId()].Preload()
             isNextSlidePreloaded = true
-            fmt.Printf("Preloading slide %d\n", nextSlideId())
         }
 
         // Advance the slide, if enough time has elapsed
@@ -100,7 +124,6 @@ func RunMultiSlide(d Display, config LedSignConfig) {
             currentSlide = config.Slides[currentSlideId]
             timeUntilAdvance = config.SlideAdvanceInterval
             isNextSlidePreloaded = false
-            fmt.Printf("Advancing to slide %d\n", currentSlideId)
         }
 
         // Wait until we're ready to redraw

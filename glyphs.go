@@ -1,7 +1,7 @@
 package main
 
 import (
-    "fmt"
+    log "github.com/sirupsen/logrus"
 )
 
 type Glyph struct {
@@ -631,11 +631,10 @@ func InitGlyphs() {
 
 func GetGlyph(char rune) Glyph {
     glyph, ok := glyphSet[char]
-    // fmt.Println("GlyphService.GetGlyph attempting to find " + string(char))
     if !ok {
         glyph, ok = glyphSet['�']
         if !ok {
-            fmt.Println("Could not load fallback character.")
+            log.Error("Could not load fallback character.")
         }
     }
     return glyph
