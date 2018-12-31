@@ -2,6 +2,7 @@ package main
 
 import (
     "encoding/json"
+    "flag"
     "fmt"
     log "github.com/sirupsen/logrus"
     "image"
@@ -23,6 +24,9 @@ type WeatherSlide struct {
     LastFetchJsonErr bool
     LastFetchDataErr bool
 }
+
+var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
+    "If specified, base directory to load weather icons from.")
 
 // Values to use as parameter for initializing slide
 const BOSTON_LATLNG = "42.2129,-71.0349"
@@ -60,7 +64,8 @@ func NewWeatherSlide(latLng string) *WeatherSlide {
     // Preload all the weather icons
     sl.WeatherIcons = make(map[string]*image.RGBA)
     for k := range WEATHER_API_ICON_MAP {
-        f := "icons/weather/" + WEATHER_API_ICON_MAP[k]
+        f := *weatherIconBaseDirFlag +
+            "icons/weather/" + WEATHER_API_ICON_MAP[k]
         // Open the file as binary stream
         reader, err1 := os.Open(f)
         if err1 != nil {
