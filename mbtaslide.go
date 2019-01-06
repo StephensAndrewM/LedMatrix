@@ -16,10 +16,6 @@ type MbtaSlide struct {
     StationName string
     HttpHelper  *HttpHelper
     Predictions []MbtaPrediction
-
-    // Status of loading content
-    LastFetchHttpErr bool
-    LastFetchJsonErr bool
 }
 
 const MBTA_SLIDE_ERROR_SPACE = 3
@@ -45,7 +41,7 @@ var MBTA_STATION_NAME_MAP = map[string]string{
 func NewMbtaSlide(stationId string) *MbtaSlide {
     this := new(MbtaSlide)
     name, ok := MBTA_STATION_NAME_MAP[stationId]
-    if ok != true {
+    if !ok {
         log.WithFields(log.Fields{
             "stationId": stationId,
         }).Warn("Could not find station name.")
@@ -57,39 +53,21 @@ func NewMbtaSlide(stationId string) *MbtaSlide {
     url := fmt.Sprintf("https://api-v3.mbta.com/predictions"+
         "?include=route,trip&filter[stop]=%s", stationId)
     refresh := 60 * time.Second
-    this.HttpHelper = NewHttpHelper(url, refresh)
+    this.HttpHelper = NewHttpHelper(url, refresh, this.Parse)
 
     return this
 }
 
-func (this *MbtaSlide) Preload() {
-    // Reset errors, in case last time wasn't successful
-    this.LastFetchHttpErr = false
-    this.LastFetchJsonErr = false
-
-    // Load live Data from MBTA
-    respBytes, ok := this.HttpHelper.Fetch()
-    if !ok {
-        log.Warn("Error loading MBTA data.")
-        this.LastFetchHttpErr = true
-        return
-    }
-
+func (this *MbtaSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
-    var respData MbtaApiResponse
-    jsonErr := json.Unmarshal(respBytes, &respData)
+    var resp MbtaApiResponse
+    jsonErr := json.Unmarshal(respBytes, &resp)
     if jsonErr != nil {
         log.WithFields(log.Fields{
             "error": jsonErr,
-        }).Warn("Error interpreting MBTA data.")
-        this.LastFetchJsonErr = true
-        return
+        }).Warn("Error unmarshalling MBTA data.")
+        return false
     }
-
-    this.ParsePredictions(respData)
-}
-
-func (this *MbtaSlide) ParsePredictions(resp MbtaApiResponse) {
 
     trips := this.GetTripDataByTripId(resp.Included)
 
@@ -103,8 +81,10 @@ func (this *MbtaSlide) ParsePredictions(resp MbtaApiResponse) {
             // Parse the time into a standard format
             t, tErr := time.Parse(time.RFC3339, r.Attributes.DepartureTime)
             if tErr != nil {
-                fmt.Printf(
-                    "Error interpreting MBTA time: %s struct: %s\n", tErr, r)
+                log.WithFields(log.Fields{
+                    "error": tErr,
+                    "value": r.Attributes.DepartureTime,
+                }).Warn("Error interpreting MBTA time.")
                 continue
             }
             // Get data about the trip supplied in the prediction
@@ -117,21 +97,22 @@ func (this *MbtaSlide) ParsePredictions(resp MbtaApiResponse) {
                 }
                 predictions = append(predictions, p)
             } else {
-                fmt.Printf(
-                    "Error interpreting MBTA Trip ID: %s\n",
-                    r.Relationships.Trip.Data.Id)
+                log.WithFields(log.Fields{
+                    "tripId": r.Relationships.Trip.Data.Id,
+                }).Warn("Error interpreting MBTA trip ID.")
                 continue
             }
         }
     }
+    // Sort the predictions by arrival time
     sort.Slice(predictions, func(i, j int) bool {
         return predictions[i].Time.Before(predictions[j].Time)
     })
     this.Predictions = predictions
+    return true
 }
 
 func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[string]MbtaTrip {
-
     // Build a map of Route data keyed by Route ID
     routeDefs := make(map[string]MbtaRoute)
     for _, r := range resources {
@@ -162,8 +143,9 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
             if ok {
                 m[r.Id] = MbtaTrip{route, r.Attributes.Headsign}
             } else {
-                fmt.Printf("Could not find route data for %s\n",
-                    r.Relationships.Route.Data.Id)
+                log.WithFields(log.Fields{
+                    "tripId": r.Relationships.Route.Data.Id,
+                }).Warn("Could not find MBTA route data.")
             }
         }
     }
@@ -171,14 +153,8 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
 }
 
 func (this *MbtaSlide) Draw(img *image.RGBA) {
-
-    // Stop immediately if we have errors
-    if this.LastFetchHttpErr {
+    if !this.HttpHelper.LastFetchSuccess {
         DrawError(img, MBTA_SLIDE_ERROR_SPACE, 1)
-        return
-    }
-    if this.LastFetchJsonErr {
-        DrawError(img, MBTA_SLIDE_ERROR_SPACE, 2)
         return
     }
 

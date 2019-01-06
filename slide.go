@@ -12,59 +12,73 @@ import (
 )
 
 type Slide interface {
-    Preload()
     Draw(base *image.RGBA)
 }
 
-type HttpHelper struct {
-    // Object settings
-    BaseUrl         string
-    RefreshInternal time.Duration
+type HttpCallback func(respBytes []byte) (result bool)
 
-    // Internal vars
-    LastFetchTime  time.Time
-    CachedResponse []byte
+type HttpHelper struct {
+    BaseUrl          string
+    RefreshInterval  time.Duration
+    Callback         HttpCallback
+    LastFetchSuccess bool
 }
 
-func NewHttpHelper(baseUrl string, refreshInterval time.Duration) *HttpHelper {
+func NewHttpHelper(baseUrl string, refreshInterval time.Duration, callback HttpCallback) *HttpHelper {
     h := new(HttpHelper)
     h.BaseUrl = baseUrl
-    h.RefreshInternal = refreshInterval
+    h.RefreshInterval = refreshInterval
+    h.Callback = callback
     log.WithFields(log.Fields{
         "url":      baseUrl,
         "interval": refreshInterval,
     }).Debug("HttpHelper initialized.")
+
+    // Set up period refresh of the data
+    ticker := time.NewTicker(refreshInterval)
+    go func() {
+        for range ticker.C {
+            h.Fetch()
+        }
+    }()
+
+    // Get the data once now so we don't have to wait
+    h.Fetch()
+
     return h
 }
 
-func (this *HttpHelper) Fetch() ([]byte, bool) {
-    now := time.Now()
-    if now.Before(this.LastFetchTime.Add(this.RefreshInternal)) {
-        log.WithFields(log.Fields{
-            "cacheTime": this.LastFetchTime,
-            "cacheTimeDiff": now.Sub(this.LastFetchTime),
-        }).Debug("Returning cached response.")
-        return this.CachedResponse, true
+func (this *HttpHelper) Fetch() {
+    // Don't fetch data while in night mode, unless we're about to wake back
+    // up (now + refresh interval), in which case continue.
+    if InNightMode(time.Now()) &&
+        InNightMode(time.Now().Add(this.RefreshInterval)) {
+        return
     }
 
     resp, httpErr := http.Get(this.BaseUrl)
     if httpErr != nil {
         log.WithFields(log.Fields{
+            "url":   this.BaseUrl,
             "error": httpErr,
         }).Warn("HTTP error in HttpHelper.")
-        return nil, false
+        this.LastFetchSuccess = false
+        return
     }
 
     respBuf := new(bytes.Buffer)
     respBuf.ReadFrom(resp.Body)
+    respBytes := respBuf.Bytes()
 
-    this.LastFetchTime = time.Now()
-    this.CachedResponse = respBuf.Bytes()
+    this.LastFetchSuccess = this.Callback(respBytes)
+    
+    log.WithFields(log.Fields{
+        "url":     this.BaseUrl,
+        "success": this.LastFetchSuccess,
+    }).Debug("Fetch complete.")
 
-    // Output debug file
+    // Output debug file, maybe
     if DEBUG_HTTP {
-        ioutil.WriteFile(fmt.Sprintf("debug/%d.txt", time.Now().Unix()), respBuf.Bytes(), os.FileMode(770))
+        ioutil.WriteFile(fmt.Sprintf("debug/%d.txt", time.Now().Unix()), respBytes, os.FileMode(770))
     }
-
-    return respBuf.Bytes(), true
 }

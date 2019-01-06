@@ -18,11 +18,6 @@ type WeatherSlide struct {
     HttpHelper   *HttpHelper
     Weather      WeatherApiResponse
     WeatherIcons map[string]*image.RGBA
-
-    // Status of loading content
-    LastFetchHttpErr bool
-    LastFetchJsonErr bool
-    LastFetchDataErr bool
 }
 
 var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
@@ -51,18 +46,16 @@ var WEATHER_API_ICON_MAP = map[string]string{
 }
 
 func NewWeatherSlide(latLng string) *WeatherSlide {
-    sl := new(WeatherSlide)
+    this := new(WeatherSlide)
 
     // Set up HTTP fetcher
     url := fmt.Sprintf("https://api.darksky.net/forecast/%s/%s",
         WEATHER_API_KEY, latLng)
     refresh := 5 * time.Minute
-    sl.HttpHelper = NewHttpHelper(url, refresh)
-    // Block drawing until we get a response
-    sl.LastFetchHttpErr = true
+    this.HttpHelper = NewHttpHelper(url, refresh, this.Parse)
 
     // Preload all the weather icons
-    sl.WeatherIcons = make(map[string]*image.RGBA)
+    this.WeatherIcons = make(map[string]*image.RGBA)
     for k := range WEATHER_API_ICON_MAP {
         f := *weatherIconBaseDirFlag +
             "icons/weather/" + WEATHER_API_ICON_MAP[k]
@@ -89,22 +82,13 @@ func NewWeatherSlide(latLng string) *WeatherSlide {
         b := img.Bounds()
         imgRgba := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
         draw.Draw(imgRgba, imgRgba.Bounds(), img, b.Min, draw.Src)
-        sl.WeatherIcons[k] = imgRgba
+        this.WeatherIcons[k] = imgRgba
     }
 
-    return sl
+    return this
 }
 
-func (this *WeatherSlide) Preload() {
-    // Load live Data from API
-    respBytes, ok := this.HttpHelper.Fetch()
-    if !ok {
-        log.Warn("Error loading weather data")
-        this.LastFetchHttpErr = true
-        return
-    }
-    this.LastFetchHttpErr = false
-
+func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var respData WeatherApiResponse
     jsonErr := json.Unmarshal(respBytes, &respData)
@@ -112,34 +96,25 @@ func (this *WeatherSlide) Preload() {
         log.WithFields(log.Fields{
             "error": jsonErr,
         }).Warn("Could not interpret weather JSON.")
-        this.LastFetchJsonErr = true
-        return
+        return false
     }
-    this.LastFetchJsonErr = false
 
     // Assert that the response contains what we expect
     if respData.Current.Icon == "" ||
         len(respData.Daily.Data) == 0 {
         log.Warn("Weather response data has no data.")
-        this.LastFetchDataErr = true
+        return false
     }
-    this.LastFetchDataErr = false
+    
     this.Weather = respData
+    return true
 }
 
 func (this *WeatherSlide) Draw(img *image.RGBA) {
 
     // Stop immediately if we have errors
-    if this.LastFetchHttpErr {
+    if !this.HttpHelper.LastFetchSuccess {
         DrawError(img, WEATHER_SLIDE_ERROR_SPACE, 1)
-        return
-    }
-    if this.LastFetchJsonErr {
-        DrawError(img, WEATHER_SLIDE_ERROR_SPACE, 2)
-        return
-    }
-    if this.LastFetchDataErr {
-        DrawError(img, WEATHER_SLIDE_ERROR_SPACE, 3)
         return
     }
 

@@ -15,10 +15,6 @@ func NewTimeSlide() *TimeSlide {
     return sl
 }
 
-func (this *TimeSlide) Preload() {
-
-}
-
 func (this *TimeSlide) Draw(img *image.RGBA) {
     t := time.Now()
     l1 := strings.ToUpper(t.Format("Jan 2"))
