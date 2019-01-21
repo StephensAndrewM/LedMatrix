@@ -2,11 +2,11 @@ package main
 
 import (
     "fmt"
+    log "github.com/sirupsen/logrus"
     "image"
     "image/color"
     "math"
     "time"
-    log "github.com/sirupsen/logrus"
 )
 
 type ChristmasSlide struct {
@@ -15,6 +15,10 @@ type ChristmasSlide struct {
 func NewChristmasSlide() *ChristmasSlide {
     sl := new(ChristmasSlide)
     return sl
+}
+
+func (this *ChristmasSlide) Initialize() {
+
 }
 
 func (this *ChristmasSlide) Draw(img *image.RGBA) {

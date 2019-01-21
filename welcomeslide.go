@@ -13,14 +13,13 @@ func NewWelcomeSlide() *WelcomeSlide {
     return sl
 }
 
-func (this *WelcomeSlide) Preload() {
-    // DON'T preload anything here.
-    // This slide gets displayed as soon as the controller starts.
+func (this *WelcomeSlide) Initialize() {
+    // This won't ever get called since this slide isn't in the main rotation.
 }
 
 func (this *WelcomeSlide) Draw(img *image.RGBA) {
     midpoint := GetLeftOfCenterX(img)
-    WriteString(img, "HELLO!", color.RGBA{255, 255, 255, 255}, ALIGN_CENTER, midpoint, 0)
-    WriteString(img, "Andrew's Led Matrix", color.RGBA{0, 255, 255, 255}, ALIGN_CENTER, midpoint, 16)
-    WriteString(img, "v_1.0", color.RGBA{0, 255, 0, 255}, ALIGN_CENTER, midpoint, 24)
+    WriteString(img, "HELLO!", color.RGBA{255, 255, 255, 255}, ALIGN_CENTER, midpoint, 2)
+    WriteString(img, "Andrew's Led Matrix", color.RGBA{0, 255, 255, 255}, ALIGN_CENTER, midpoint, 15)
+    WriteString(img, "v_1.1", color.RGBA{0, 255, 0, 255}, ALIGN_CENTER, midpoint, 23)
 }

@@ -22,6 +22,10 @@ func NewGlyphTestSlide(test GlyphTestType) *GlyphTestSlide {
     return sl
 }
 
+func (this *GlyphTestSlide) Initialize() {
+
+}
+
 func (sl *GlyphTestSlide) Draw(img *image.RGBA) {
     midpoint := GetLeftOfCenterX(img)
     c := color.RGBA{255, 255, 255, 255}

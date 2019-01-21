@@ -58,6 +58,10 @@ func NewMbtaSlide(stationId string) *MbtaSlide {
     return this
 }
 
+func (this *MbtaSlide) Initialize() {
+    this.HttpHelper.StartLoop()
+}
+
 func (this *MbtaSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var resp MbtaApiResponse

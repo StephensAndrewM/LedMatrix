@@ -51,7 +51,7 @@ func NewWeatherSlide(latLng string) *WeatherSlide {
     // Set up HTTP fetcher
     url := fmt.Sprintf("https://api.darksky.net/forecast/%s/%s",
         WEATHER_API_KEY, latLng)
-    refresh := 5 * time.Minute
+    refresh := 2 * time.Minute
     this.HttpHelper = NewHttpHelper(url, refresh, this.Parse)
 
     // Preload all the weather icons
@@ -88,6 +88,10 @@ func NewWeatherSlide(latLng string) *WeatherSlide {
     return this
 }
 
+func (this *WeatherSlide) Initialize() {
+    this.HttpHelper.StartLoop()
+}
+
 func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var respData WeatherApiResponse
@@ -105,7 +109,7 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
         log.Warn("Weather response data has no data.")
         return false
     }
-    
+
     this.Weather = respData
     return true
 }

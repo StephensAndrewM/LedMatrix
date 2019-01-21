@@ -1,10 +1,10 @@
 package main
 
 import (
-    "strings"
-    "time"
     "image"
     "image/color"
+    "strings"
+    "time"
 )
 
 type TimeSlide struct {
@@ -13,6 +13,10 @@ type TimeSlide struct {
 func NewTimeSlide() *TimeSlide {
     sl := new(TimeSlide)
     return sl
+}
+
+func (this *TimeSlide) Initialize() {
+
 }
 
 func (this *TimeSlide) Draw(img *image.RGBA) {

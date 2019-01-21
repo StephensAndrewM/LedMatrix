@@ -39,10 +39,10 @@ const DEBUG_HTTP = false
 func main() {
     // Init flags for use everywhere
     flag.Parse()
+    InitLogger()
 
     // Set up the glyph mappings
     InitGlyphs()
-    InitLogger()
 
     // Set up the display - hardware as default
     var d Display
@@ -53,17 +53,6 @@ func main() {
     }
     d.Initialize()
 
-    RunMultiSlide(d)
-}
-
-func InitLogger() {
-    log.SetLevel(log.InfoLevel)
-    log.SetFormatter(&log.TextFormatter{
-        FullTimestamp: true,
-    })
-}
-
-func RunMultiSlide(d Display) {
     // Hold running state
     slides := GetSlides()
     currentSlideId := -1
@@ -72,25 +61,30 @@ func RunMultiSlide(d Display) {
     // Display *something* while everything starts up
     currentSlide = NewWelcomeSlide()
 
-    // Slide advance ticker - update slide number periodically
+    // Redraw ticker - update whatever slide is currently displayed
+    redrawTicker := time.NewTicker(DRAW_INTERVAL)
+    go func() {
+        for range redrawTicker.C {
+            DrawSlide(currentSlide, d)
+        }
+    }()
+
+    // Don't initialize or advance until internet is available
+    WaitForConnection()
+
+    // Initialize all slides
+    for _,s := range slides {
+        s.Initialize()
+    }
+
+    // Slide advance ticker - update slide index periodically
     advanceTicker := time.NewTicker(config.SlideAdvanceInterval)
     go func() {
         for range advanceTicker.C {
             currentSlideId = (currentSlideId + 1) % len(slides)
             currentSlide = slides[currentSlideId]
-        }
-    }()
-
-    // Redraw ticker - update whatever slide is currently displayed
-    redrawTicker := time.NewTicker(DRAW_INTERVAL)
-    go func() {
-        for range redrawTicker.C {
-            img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
-            // Leave slide blank if we're currently in night mode
-            if !InNightMode(time.Now()) {
-                currentSlide.Draw(img)
-            }
-            d.Redraw(img)
+            // Draw now just in case this is out of sync with draw timer
+            DrawSlide(currentSlide, d)
         }
     }()
 
@@ -98,6 +92,24 @@ func RunMultiSlide(d Display) {
     select {}
 }
 
+func DrawSlide(s Slide, d Display) {
+    img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+    // Leave slide blank if we're currently in night mode
+    if !InNightMode(time.Now()) {
+        s.Draw(img)
+    }
+    d.Redraw(img)
+}
+
+// Set global settings for logging. Should be called before anything else.
+func InitLogger() {
+    log.SetLevel(log.InfoLevel)
+    log.SetFormatter(&log.TextFormatter{
+        FullTimestamp: true,
+    })
+}
+
+// Checks if the given timestamp is within user-defined night mode interval.
 func InNightMode(t time.Time) bool {
     return t.Hour() >= config.NightModeStartHour ||
         t.Hour() < config.NightModeEndHour

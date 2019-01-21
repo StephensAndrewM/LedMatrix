@@ -12,6 +12,7 @@ import (
 )
 
 type Slide interface {
+    Initialize()
     Draw(base *image.RGBA)
 }
 
@@ -32,20 +33,27 @@ func NewHttpHelper(baseUrl string, refreshInterval time.Duration, callback HttpC
     log.WithFields(log.Fields{
         "url":      baseUrl,
         "interval": refreshInterval,
-    }).Debug("HttpHelper initialized.")
+    }).Debug("HttpHelper created.")
+    return h
+}
+
+func (this *HttpHelper) StartLoop() {
+
+    log.WithFields(log.Fields{
+        "url":      this.BaseUrl,
+        "interval": this.RefreshInterval,
+    }).Debug("HttpHelper refresh loop started.")
 
     // Set up period refresh of the data
-    ticker := time.NewTicker(refreshInterval)
+    ticker := time.NewTicker(this.RefreshInterval)
     go func() {
         for range ticker.C {
-            h.Fetch()
+            this.Fetch()
         }
     }()
 
     // Get the data once now so we don't have to wait
-    h.Fetch()
-
-    return h
+    this.Fetch()
 }
 
 func (this *HttpHelper) Fetch() {
@@ -71,7 +79,7 @@ func (this *HttpHelper) Fetch() {
     respBytes := respBuf.Bytes()
 
     this.LastFetchSuccess = this.Callback(respBytes)
-    
+
     log.WithFields(log.Fields{
         "url":     this.BaseUrl,
         "success": this.LastFetchSuccess,
