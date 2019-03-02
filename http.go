@@ -10,7 +10,7 @@ const GSTATIC_URL = "http://clients3.google.com/generate_204"
 
 // Checks for internet periodically, not returning until connected.
 func WaitForConnection() {
-    c := 0
+    c := 1
     for {
         if ConnectionPresent() {
             log.WithFields(log.Fields{

@@ -238,11 +238,11 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
     }
 
     textColor := color.RGBA{255, 255, 255, 255} // white
-    highlight := color.RGBA{255, 255, 0, 255}  // yellow
-    imgWidth := img.Bounds().Dx()
+    titleColor := color.RGBA{255, 255, 0, 255}  // yellow
+    busColor := color.RGBA{255, 255, 0, 255}  // yellow
+    timeColor := color.RGBA{0, 255, 255, 255}  // aqua
 
-    WriteString(img, this.StationName, textColor, ALIGN_LEFT, 0, 0)
-    WriteString(img, "min", highlight, ALIGN_RIGHT, imgWidth-1, 0)
+    WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 0)
 
     filteredPredictions := this.FilterTimesInPast(this.Predictions)
 
@@ -272,11 +272,11 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
             estMin := int(math.Floor(est.Minutes()))
             estStrs = append(estStrs, strconv.Itoa(estMin))
         }
-        estStr := strings.Join(estStrs, ",_")
+        estStr := strings.Join(estStrs, ",_") + "_min"
 
         // Draw a box for line color, or a bus number when relevant
         if p.Route.Type == MbtaRouteTypeBus {
-            WriteString(img, p.Route.Id, highlight, ALIGN_CENTER, 5, y)
+            WriteString(img, p.Route.Id, busColor, ALIGN_CENTER, 5, y)
         } else {
             lineColor := ColorFromHex(p.Route.Color)
             reducedLineColor := ReduceColor(lineColor)
@@ -292,7 +292,7 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
 
         // Time estimate
         imgWidth := img.Bounds().Dx()
-        WriteString(img, estStr, highlight, ALIGN_RIGHT, imgWidth-1, y)
+        WriteString(img, estStr, timeColor, ALIGN_RIGHT, imgWidth-1, y)
     }
 }
 
