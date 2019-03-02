@@ -600,15 +600,24 @@ func InitGlyphs() {
         {1},
         {0},
         {1}})
+    RegisterGlyph(',', [][]uint8{
+        {0},
+        {0},
+        {0},
+        {0},
+        {0},
+        {0},
+        {1},
+        {1}})
     // Underscore represents a short space
     RegisterGlyph('_', [][]uint8{
-        {0},
-        {0},
-        {0},
-        {0},
-        {0},
-        {0},
-        {0}})
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {}})
     RegisterGlyph(' ', [][]uint8{
         {0,0,0},
         {0,0,0},

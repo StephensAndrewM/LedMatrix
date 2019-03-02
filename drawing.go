@@ -21,6 +21,11 @@ func WriteString(img *image.RGBA, str string, c color.RGBA, align Alignment, x i
 }
 
 func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment, x int, y int, max int) {
+    // This shouldn't happen, but is an indicator to just not draw anything
+    if (max < 0) {
+        return
+    }
+
     glyphs := make([]Glyph, len(str))
     width := 0
     for i, char := range str {
@@ -122,6 +127,17 @@ func DrawImageWithColorTransform(canvas *image.RGBA, source *image.RGBA, xOffset
             }
         }
     }
+}
+
+func GetDisplayWidth(str string) int {
+    width := 0
+    for _, c := range str {
+        g := GetGlyph(c)
+        width += g.Width + 1
+    }
+    // Remove the kerning on the last letter
+    width--
+    return width
 }
 
 func ColorFromHex(s string) color.RGBA {

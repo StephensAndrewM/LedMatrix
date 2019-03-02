@@ -8,6 +8,7 @@ import (
     "image/color"
     "math"
     "sort"
+    "strconv"
     "strings"
     "time"
 )
@@ -20,10 +21,8 @@ type MbtaSlide struct {
 
 const MBTA_SLIDE_ERROR_SPACE = 3
 
-// Lowest duration of prediction allowed to show
-const MBTA_ARRIVAL_THRESHOLD = 5
-
 // Station names - used in constructor
+// This is not an exhaustive list, just some easy ones
 const MBTA_STATION_ID_DAVIS = "place-davis"
 const MBTA_STATION_ID_PARK = "place-pktrm"
 const MBTA_STATION_ID_MGH = "place-chmnl"
@@ -73,55 +72,27 @@ func (this *MbtaSlide) Parse(respBytes []byte) bool {
         return false
     }
 
-    trips := this.GetTripDataByTripId(resp.Included)
+    // We need to resolve a trip ID into structured information
+    routeByTripId := this.BuildTripIdToRouteMap(resp.Included)
 
-    var predictions []MbtaPrediction
-    for _, r := range resp.Data {
-        if r.Type == "prediction" {
-            // Some vehicles don't give departure estimates - ignore them
-            if len(r.Attributes.DepartureTime) == 0 {
-                continue
-            }
-            // Parse the time into a standard format
-            t, tErr := time.Parse(time.RFC3339, r.Attributes.DepartureTime)
-            if tErr != nil {
-                log.WithFields(log.Fields{
-                    "error": tErr,
-                    "value": r.Attributes.DepartureTime,
-                }).Warn("Error interpreting MBTA time.")
-                continue
-            }
-            // Get data about the trip supplied in the prediction
-            tr, ok := trips[r.Relationships.Trip.Data.Id]
-            if ok {
-                p := MbtaPrediction{
-                    Route:       tr.Route,
-                    Destination: tr.Headsign,
-                    Time:        t,
-                }
-                predictions = append(predictions, p)
-            } else {
-                log.WithFields(log.Fields{
-                    "tripId": r.Relationships.Trip.Data.Id,
-                }).Warn("Error interpreting MBTA trip ID.")
-                continue
-            }
-        }
-    }
-    // Sort the predictions by arrival time
-    sort.Slice(predictions, func(i, j int) bool {
-        return predictions[i].Time.Before(predictions[j].Time)
-    })
-    this.Predictions = predictions
+    // Create a mapping of predicted times by route
+    predictionsByRoute := this.BuildRouteToPredictionsMap(resp.Data, routeByTripId)
+
+    // Flatten the predictions into what will be displayed
+    this.Predictions = this.FlattenPredictions(routeByTripId, predictionsByRoute)
+
     return true
 }
 
-func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[string]MbtaTrip {
-    // Build a map of Route data keyed by Route ID
+func (this *MbtaSlide) BuildTripIdToRouteMap(resources []MbtaApiResource) map[string]MbtaRoute {
+    // Iterate through all provided "route" resources, building a mapping
+    // of route ID (string) to structure route object (with name and color).
+    // These route objects do *not* have the destination property set.
     routeDefs := make(map[string]MbtaRoute)
     for _, r := range resources {
         if r.Type == "route" {
             routeDef := MbtaRoute{}
+            // We deliberately don't set Dest since we don't know it here
             routeDef.Id = r.Id
             routeDef.Color = r.Attributes.Color
             switch r.Attributes.Type {
@@ -140,12 +111,20 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
         }
     }
 
-    m := make(map[string]MbtaTrip)
+    // Iterate again, looking at "trip" resources instead. This resource has
+    // the headsign attribute that we use to set Destination on the route,
+    // and the ID that we use as the map's key.
+    m := make(map[string]MbtaRoute)
     for _, r := range resources {
         if r.Type == "trip" {
             route, ok := routeDefs[r.Relationships.Route.Data.Id]
             if ok {
-                m[r.Id] = MbtaTrip{route, r.Attributes.Headsign}
+                m[r.Id] = MbtaRoute{
+                    Id:          route.Id,
+                    Color:       route.Color,
+                    Type:        route.Type,
+                    Destination: r.Attributes.Headsign,
+                }
             } else {
                 log.WithFields(log.Fields{
                     "tripId": r.Relationships.Route.Data.Id,
@@ -156,6 +135,102 @@ func (this *MbtaSlide) GetTripDataByTripId(resources []MbtaApiResource) map[stri
     return m
 }
 
+func (this *MbtaSlide) BuildRouteToPredictionsMap(data []MbtaApiResource, routeByTripId map[string]MbtaRoute) map[string][]time.Time {
+    predictions := make(map[string][]time.Time)
+    for _, r := range data {
+        if r.Type == "prediction" {
+            // Some vehicles don't give departure estimates - ignore them
+            if len(r.Attributes.DepartureTime) == 0 {
+                continue
+            }
+            // Parse the time into a standard format
+            t, tErr := time.Parse(time.RFC3339, r.Attributes.DepartureTime)
+            if tErr != nil {
+                log.WithFields(log.Fields{
+                    "error": tErr,
+                    "value": r.Attributes.DepartureTime,
+                }).Warn("Error interpreting MBTA time.")
+                continue
+            }
+            // Get data about the trip supplied in the prediction
+            tr, ok := routeByTripId[r.Relationships.Trip.Data.Id]
+            if !ok {
+                log.WithFields(log.Fields{
+                    "tripId": r.Relationships.Trip.Data.Id,
+                }).Warn("Error interpreting MBTA trip ID in prediction.")
+                continue
+            }
+            // Turn the route and destination struct into a string and store
+            k := this.RouteToString(tr)
+            predictions[k] = append(predictions[k], t)
+        }
+    }
+    return predictions
+}
+
+func (this *MbtaSlide) FlattenPredictions(routeByTripId map[string]MbtaRoute, predictionsByRoute map[string][]time.Time) []MbtaPrediction {
+    // Create a lookup map of route string -> object
+    routeLookup := make(map[string]MbtaRoute)
+    for _, v := range routeByTripId {
+        routeLookup[this.RouteToString(v)] = v
+    }
+
+    // Create a list of objects containing route objects and times
+    var predictions []MbtaPrediction
+    for k, v := range predictionsByRoute {
+        // Don't include routes with no predictions
+        if len(v) == 0 {
+            continue
+        }
+        // Translate the route string (key) into an actual object
+        r, ok := routeLookup[k]
+        if !ok {
+            log.WithFields(log.Fields{
+                "routeString": k,
+            }).Warn("MBTA route object not found for string.")
+            continue
+        }
+        // Finally, add it to the list
+        p := MbtaPrediction{
+            Route: r,
+            Time:  v,
+        }
+        predictions = append(predictions, p)
+    }
+
+    return predictions
+}
+
+// Squash a MbtaRoute object to a simple string representation
+func (this *MbtaSlide) RouteToString(r MbtaRoute) string {
+    return fmt.Sprintf("%s/%s/%s/%s", r.Type, r.Color, r.Id, r.Destination)
+}
+
+// Finds the earliest time in an unsorted array
+func (this *MbtaSlide) GetMinTime(t []time.Time) time.Time {
+    sort.Slice(t, func(i, j int) bool {
+        return t[i].Before(t[j])
+    })
+    return t[0]
+}
+
+// For all the times stored in all prediction objects, remove those in the past
+func (this *MbtaSlide) FilterTimesInPast(all []MbtaPrediction) (ret []MbtaPrediction) {
+    for _, p := range all {
+        var times []time.Time
+        for _, t := range p.Time {
+            if t.Sub(time.Now()) >= 0 {
+                times = append(times, t)
+            }
+        }
+        if len(times) > 0 {
+            p.Time = times
+            ret = append(ret, p)
+        }
+    }
+    return
+}
+
 func (this *MbtaSlide) Draw(img *image.RGBA) {
     if !this.HttpHelper.LastFetchSuccess {
         DrawError(img, MBTA_SLIDE_ERROR_SPACE, 1)
@@ -163,30 +238,45 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
     }
 
     textColor := color.RGBA{255, 255, 255, 255} // white
-    titleColor := color.RGBA{255, 255, 0, 255}  // yellow
+    highlight := color.RGBA{255, 255, 0, 255}  // yellow
+    imgWidth := img.Bounds().Dx()
 
-    WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 1)
+    WriteString(img, this.StationName, textColor, ALIGN_LEFT, 0, 0)
+    WriteString(img, "min", highlight, ALIGN_RIGHT, imgWidth-1, 0)
+
+    filteredPredictions := this.FilterTimesInPast(this.Predictions)
 
     if len(this.Predictions) == 0 {
+        // TODO display something here
         return
     }
 
-    n := 0 // Count of valid predictions found - we skip some
-    for i := 0; i < len(this.Predictions); i++ {
-        p := this.Predictions[i]
-        y := ((n + 1) * 8) + 1
+    // Resort prediction time sets based on current time
+    sort.Slice(filteredPredictions, func(i, j int) bool {
+        return this.GetMinTime(filteredPredictions[i].Time).Before(this.GetMinTime(filteredPredictions[j].Time))
+    })
 
-        // Get time estimate, and maybe skip
-        est := p.Time.Sub(time.Now())
-        estMin := int(math.Floor(est.Minutes()))
-        // Low predictions aren't useful (uness we run), so don't display any
-        // trains less than X minutes away
-        if estMin < MBTA_ARRIVAL_THRESHOLD {
-            continue
+    // TODO rotate through destinations if there are more than three
+    o := 0
+    predictionSubset := filteredPredictions[o:min(o+3, len(filteredPredictions))]
+
+    for i, p := range predictionSubset {
+        // Calculate vertical position of line
+        y := ((i + 1) * 8)
+
+        var estStrs []string
+        // Loop through first three predictions, or all, whichever is less
+        for j := 0; j < min(len(p.Time), 3); j++ {
+            t := p.Time[j]
+            est := t.Sub(time.Now())
+            estMin := int(math.Floor(est.Minutes()))
+            estStrs = append(estStrs, strconv.Itoa(estMin))
         }
+        estStr := strings.Join(estStrs, ",_")
 
+        // Draw a box for line color, or a bus number when relevant
         if p.Route.Type == MbtaRouteTypeBus {
-            WriteString(img, p.Route.Id, titleColor, ALIGN_CENTER, 5, y)
+            WriteString(img, p.Route.Id, highlight, ALIGN_CENTER, 5, y)
         } else {
             lineColor := ColorFromHex(p.Route.Color)
             reducedLineColor := ReduceColor(lineColor)
@@ -194,25 +284,15 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
         }
 
         // Size of box is different based on how many time digits to display
-        destWidth := 93
-        if estMin > 9 {
-            destWidth = 87
-        }
+        destWidth := 116 - GetDisplayWidth(estStr)
 
         // Destination
-        dest := strings.ToUpper(p.Destination)
+        dest := strings.ToUpper(p.Route.Destination)
         WriteStringBoxed(img, dest, textColor, ALIGN_LEFT, 12, y, destWidth)
 
         // Time estimate
-        estStr := fmt.Sprintf("%d_min", estMin)
         imgWidth := img.Bounds().Dx()
-        WriteString(img, estStr, textColor, ALIGN_RIGHT, imgWidth-1, y)
-
-        n++
-        // We can't display more than 3 predictions on screen so stop
-        if n >= 3 {
-            break
-        }
+        WriteString(img, estStr, highlight, ALIGN_RIGHT, imgWidth-1, y)
     }
 }
 
@@ -257,9 +337,8 @@ type MbtaApiResourceAttributes struct {
 
 // A simpler representation for use internally
 type MbtaPrediction struct {
-    Route       MbtaRoute
-    Destination string
-    Time        time.Time
+    Route MbtaRoute
+    Time  []time.Time
 }
 
 type MbtaRouteType int
@@ -273,14 +352,10 @@ const (
 )
 
 type MbtaRoute struct {
-    Type  MbtaRouteType
-    Id    string
-    Color string
-}
-
-type MbtaTrip struct {
-    Route    MbtaRoute
-    Headsign string
+    Type        MbtaRouteType
+    Id          string
+    Color       string
+    Destination string
 }
 
 func min(x, y int) int {
