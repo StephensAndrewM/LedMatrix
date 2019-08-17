@@ -27,8 +27,8 @@ var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
 const BOSTON_LATLNG = "42.2129,-71.0349"
 
 // Define a few constants for drawing
-const WEATHER_COL_WIDTH = 42
-const WEATHER_COL_CENTER = 21
+const WEATHER_COL_WIDTH = 32
+const WEATHER_COL_CENTER = 16
 const WEATHER_ICON_WIDTH = 16
 const WEATHER_SLIDE_ERROR_SPACE = 4
 
@@ -143,7 +143,70 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
     }
 
     this.DrawForecast(img, WEATHER_COL_WIDTH, this.Weather.Daily.Data[forecastOffset+0])
-    this.DrawForecast(img, WEATHER_COL_WIDTH*2, this.Weather.Daily.Data[forecastOffset+1])
+
+    this.DrawTemperatureGraph(img)
+    this.DrawPrecipitationGraph(img)
+}
+
+func (this *WeatherSlide) DrawTemperatureGraph(img *image.RGBA) {
+    white := color.RGBA{255, 255, 255, 255}
+    originX := 80
+    originY := 12
+    height := 10
+    width := 48
+
+    // Thermometer symbol
+    WriteString(img, "🌡", white, ALIGN_LEFT, originX-8, originY-8)
+
+    var timeValues []int64
+    var dataPoints []float64 
+    for _,val := range this.Weather.Hourly.Data[:48] {
+        timeValues = append(timeValues, val.Time)
+        dataPoints = append(dataPoints, val.Temperature)
+    }
+
+    DrawAutoNormalizedGraph(img, originX, originY-1, height, white, dataPoints)
+    this.DrawTimeAxes(img, originX, originY, width, height, timeValues)
+}
+
+func (this *WeatherSlide) DrawPrecipitationGraph(img *image.RGBA) {
+    white := color.RGBA{255, 255, 255, 255}
+    originX := 80
+    originY := 28
+    height := 10
+    width := 48
+
+    // Raindrop symbol
+    WriteString(img, "💧", white, ALIGN_LEFT, originX-8, originY-8)
+
+    var timeValues []int64
+    var dataPoints []float64 
+    for _,val := range this.Weather.Hourly.Data[:48] {
+        timeValues = append(timeValues, val.Time)
+        dataPoints = append(dataPoints, val.PrecipProbability)
+    }
+
+    DrawNormalizedGraph(img, originX, originY-1, height, 0.0, 1.0, white, dataPoints)
+    this.DrawTimeAxes(img, originX, originY, width, height, timeValues)
+}
+
+func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width, height int, timeValues []int64) {
+    yellow := color.RGBA{255, 255, 0, 255}
+    // aqua := color.RGBA{0, 255, 255, 255}
+    
+    DrawVertLine(img, yellow, originY-height, originY, originX-1)
+    DrawHorizLine(img, yellow, originX, originX+width, originY)
+    
+    // Draw emphasis on noon/midnight
+    for i,val := range timeValues {
+        t := time.Unix(val, 0)
+        if (t.Hour() == 0) {
+            DrawVertLine(img, yellow, originY, originY+2, originX+i)
+        }
+        if (t.Hour() == 12) {
+            DrawVertLine(img, yellow, originY, originY+1, originX+i)
+        }
+    }
 }
 
 func (this *WeatherSlide) DrawForecast(img *image.RGBA, offsetX int, forecast WeatherApiDailyForecastData) {
@@ -170,6 +233,7 @@ func (this *WeatherSlide) DrawForecast(img *image.RGBA, offsetX int, forecast We
 type WeatherApiResponse struct {
     Current WeatherApiCurrentConditions `json:"currently"`
     Daily   WeatherApiDailyForecast     `json:"daily"`
+    Hourly   WeatherApiHourlyForecast     `json:"hourly"`
 }
 
 type WeatherApiCurrentConditions struct {
@@ -182,10 +246,21 @@ type WeatherApiDailyForecast struct {
     Data []WeatherApiDailyForecastData `json:"data"`
 }
 
+type WeatherApiHourlyForecast struct {
+    Data []WeatherApiHourlyForecastData `json:"data"`
+}
+
 type WeatherApiDailyForecastData struct {
     Time              int64   `json:"time"`
     Icon              string  `json:"icon"`
     High              float64 `json:"temperatureHigh"`
     Low               float64 `json:"temperatureLow"`
+    PrecipProbability float64 `json:"precipProbability"`
+}
+
+type WeatherApiHourlyForecastData struct {
+    Time              int64   `json:"time"`
+    Icon              string  `json:"icon"`
+    Temperature       float64 `json:"temperature"`
     PrecipProbability float64 `json:"precipProbability"`
 }

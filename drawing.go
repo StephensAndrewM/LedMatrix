@@ -6,6 +6,7 @@ import (
     log "github.com/sirupsen/logrus"
     "image"
     "image/color"
+    "math"
 )
 
 type Alignment int
@@ -167,4 +168,45 @@ func ReduceColor(c color.RGBA) color.RGBA {
 
 func GetLeftOfCenterX(img *image.RGBA) int {
     return img.Bounds().Dx() / 2
+}
+
+func DrawAutoNormalizedGraph(img *image.RGBA, x, y, h int, c color.RGBA, data []float64) {
+    min := data[0]
+    max := data[0]
+    for _, val := range data {
+        if val < min {
+            min = val
+        }
+        if val > max {
+            max = val
+        }
+    }
+    DrawNormalizedGraph(img, x, y, h, min, max, c, data)
+}
+
+func DrawNormalizedGraph(img *image.RGBA, x, y, h int, min, max float64, c color.RGBA, data []float64) {
+    dataRange := max - min
+    var normalized []int
+    for _, val := range data {
+        normVal := int(Round(((val - min) / dataRange) * float64(h)))
+        normalized = append(normalized, normVal)
+        fmt.Printf("%.2f --> %d [%.2f, %.2f]\n", val, normVal, min, max)
+    }
+    for i, val := range normalized {
+        // Zero-check and +1 needed to we don't draw a point for a zero value
+        // 
+        if (val > 0) {
+            DrawVertLine(img, c, y-val+1, y, x+i)
+        }
+    }
+}
+
+// This is needed for compatibility with Go 1.9
+// What kind of language doesn't implement this???
+func Round(x float64) float64 {
+    t := math.Trunc(x)
+    if math.Abs(x-t) >= 0.5 {
+        return t + math.Copysign(1, x)
+    }
+    return t
 }

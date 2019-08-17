@@ -609,6 +609,24 @@ func InitGlyphs() {
         {0},
         {1},
         {1}})
+    // Thermometer
+    RegisterGlyph('🌡', [][]uint8{
+        {0,1,1,0},
+        {0,1,1,0},
+        {0,1,1,0},
+        {0,1,1,0},
+        {0,1,1,0},
+        {1,0,0,1},
+        {0,1,1,0}})
+    // Raindrops
+    RegisterGlyph('💧', [][]uint8{
+        {0,0,0,0},
+        {0,1,0,1},
+        {0,1,0,1},
+        {1,0,0,1},
+        {1,0,1,0},
+        {0,0,1,0},
+    	{0,0,0,0}})
     // Underscore represents a short space
     RegisterGlyph('_', [][]uint8{
         {},
