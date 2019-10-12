@@ -34,7 +34,7 @@ func main() {
     flag.Parse()
 
     // Set global settings for logging
-    log.SetLevel(log.DebugLevel)
+    log.SetLevel(log.InfoLevel)
     log.SetFormatter(&log.TextFormatter{
         FullTimestamp: true,
     })
