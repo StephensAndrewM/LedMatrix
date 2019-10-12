@@ -193,8 +193,7 @@ func DrawNormalizedGraph(img *image.RGBA, x, y, h int, min, max float64, c color
         // fmt.Printf("%.2f --> %d [%.2f, %.2f]\n", val, normVal, min, max)
     }
     for i, val := range normalized {
-        // Zero-check and +1 needed to we don't draw a point for a zero value
-        // 
+        // Zero-check and +1 needed so we don't draw a point for a zero value
         if (val > 0) {
             DrawVertLine(img, c, y-val+1, y, x+i)
         }
