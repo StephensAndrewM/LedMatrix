@@ -190,7 +190,7 @@ func DrawNormalizedGraph(img *image.RGBA, x, y, h int, min, max float64, c color
     for _, val := range data {
         normVal := int(Round(((val - min) / dataRange) * float64(h)))
         normalized = append(normalized, normVal)
-        fmt.Printf("%.2f --> %d [%.2f, %.2f]\n", val, normVal, min, max)
+        // fmt.Printf("%.2f --> %d [%.2f, %.2f]\n", val, normVal, min, max)
     }
     for i, val := range normalized {
         // Zero-check and +1 needed to we don't draw a point for a zero value

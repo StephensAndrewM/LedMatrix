@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Simple script for sending the approriate HTTP request to control the show
+# Usage: 
+#   ./showctrl <command>
+#   <command> := start|stop
+
+curl -X POST http://localhost:5000/$1

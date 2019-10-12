@@ -38,7 +38,6 @@ func NewHttpHelper(baseUrl string, refreshInterval time.Duration, callback HttpC
 }
 
 func (this *HttpHelper) StartLoop() {
-
     log.WithFields(log.Fields{
         "url":      this.BaseUrl,
         "interval": this.RefreshInterval,
@@ -52,18 +51,11 @@ func (this *HttpHelper) StartLoop() {
         }
     }()
 
-    // Get the data once now so we don't have to wait
+    // Get the data once now (synchronously)
     this.Fetch()
 }
 
 func (this *HttpHelper) Fetch() {
-    // Don't fetch data while in night mode, unless we're about to wake back
-    // up (now + refresh interval), in which case continue.
-    if InNightMode(time.Now()) &&
-        InNightMode(time.Now().Add(this.RefreshInterval)) {
-        return
-    }
-
     resp, httpErr := http.Get(this.BaseUrl)
     if httpErr != nil {
         log.WithFields(log.Fields{

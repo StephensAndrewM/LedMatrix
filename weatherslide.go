@@ -192,7 +192,6 @@ func (this *WeatherSlide) DrawPrecipitationGraph(img *image.RGBA) {
 
 func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width, height int, timeValues []int64) {
     yellow := color.RGBA{255, 255, 0, 255}
-    // aqua := color.RGBA{0, 255, 255, 255}
     
     DrawVertLine(img, yellow, originY-height, originY, originX-1)
     DrawHorizLine(img, yellow, originX, originX+width, originY)
