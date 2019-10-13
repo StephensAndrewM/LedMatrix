@@ -92,6 +92,10 @@ func (this *WeatherSlide) Initialize() {
     this.HttpHelper.StartLoop()
 }
 
+func (this *WeatherSlide) Terminate() {
+    this.HttpHelper.StopLoop()
+}
+
 func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var respData WeatherApiResponse
@@ -106,7 +110,9 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Assert that the response contains what we expect
     if respData.Current.Icon == "" ||
         len(respData.Daily.Data) == 0 {
-        log.Warn("Weather response data has no data.")
+            log.WithFields(log.Fields{
+                "error": respData.Error,
+            }).Warn("Weather response data has no data.")
         return false
     }
 
@@ -159,8 +165,8 @@ func (this *WeatherSlide) DrawTemperatureGraph(img *image.RGBA) {
     WriteString(img, "🌡", white, ALIGN_LEFT, originX-8, originY-8)
 
     var timeValues []int64
-    var dataPoints []float64 
-    for _,val := range this.Weather.Hourly.Data[:48] {
+    var dataPoints []float64
+    for _, val := range this.Weather.Hourly.Data[:48] {
         timeValues = append(timeValues, val.Time)
         dataPoints = append(dataPoints, val.Temperature)
     }
@@ -180,8 +186,8 @@ func (this *WeatherSlide) DrawPrecipitationGraph(img *image.RGBA) {
     WriteString(img, "💧", white, ALIGN_LEFT, originX-8, originY-8)
 
     var timeValues []int64
-    var dataPoints []float64 
-    for _,val := range this.Weather.Hourly.Data[:48] {
+    var dataPoints []float64
+    for _, val := range this.Weather.Hourly.Data[:48] {
         timeValues = append(timeValues, val.Time)
         dataPoints = append(dataPoints, val.PrecipProbability)
     }
@@ -192,17 +198,17 @@ func (this *WeatherSlide) DrawPrecipitationGraph(img *image.RGBA) {
 
 func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width, height int, timeValues []int64) {
     yellow := color.RGBA{255, 255, 0, 255}
-    
+
     DrawVertLine(img, yellow, originY-height, originY, originX-1)
     DrawHorizLine(img, yellow, originX, originX+width, originY)
-    
+
     // Draw emphasis on noon/midnight
-    for i,val := range timeValues {
+    for i, val := range timeValues {
         t := time.Unix(val, 0)
-        if (t.Hour() == 0) {
+        if t.Hour() == 0 {
             DrawVertLine(img, yellow, originY, originY+2, originX+i)
         }
-        if (t.Hour() == 12) {
+        if t.Hour() == 12 {
             DrawVertLine(img, yellow, originY, originY+1, originX+i)
         }
     }
@@ -232,7 +238,9 @@ func (this *WeatherSlide) DrawForecast(img *image.RGBA, offsetX int, forecast We
 type WeatherApiResponse struct {
     Current WeatherApiCurrentConditions `json:"currently"`
     Daily   WeatherApiDailyForecast     `json:"daily"`
-    Hourly   WeatherApiHourlyForecast     `json:"hourly"`
+    Hourly  WeatherApiHourlyForecast    `json:"hourly"`
+    Code    int                         `json:"code"`
+    Error   string                      `json:"error"`
 }
 
 type WeatherApiCurrentConditions struct {

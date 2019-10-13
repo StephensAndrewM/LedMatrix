@@ -12,7 +12,11 @@ import (
 )
 
 type Slide interface {
+    // Called when slideshow is being started
     Initialize()
+    // Called when slideshow is being stopped
+    Terminate()
+    // Called when a new frame is requested to display
     Draw(base *image.RGBA)
 }
 
@@ -23,6 +27,8 @@ type HttpHelper struct {
     RefreshInterval  time.Duration
     Callback         HttpCallback
     LastFetchSuccess bool
+
+    RefreshTicker *time.Ticker
 }
 
 func NewHttpHelper(baseUrl string, refreshInterval time.Duration, callback HttpCallback) *HttpHelper {
@@ -44,15 +50,19 @@ func (this *HttpHelper) StartLoop() {
     }).Debug("HttpHelper refresh loop started.")
 
     // Set up period refresh of the data
-    ticker := time.NewTicker(this.RefreshInterval)
+    this.RefreshTicker = time.NewTicker(this.RefreshInterval)
     go func() {
-        for range ticker.C {
+        for range this.RefreshTicker.C {
             this.Fetch()
         }
     }()
 
     // Get the data once now (synchronously)
     this.Fetch()
+}
+
+func (this *HttpHelper) StopLoop() {
+    this.RefreshTicker.Stop()
 }
 
 func (this *HttpHelper) Fetch() {

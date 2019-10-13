@@ -61,6 +61,10 @@ func (this *MbtaSlide) Initialize() {
     this.HttpHelper.StartLoop()
 }
 
+func (this *MbtaSlide) Terminate() {
+    this.HttpHelper.StopLoop()
+}
+
 func (this *MbtaSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var resp MbtaApiResponse
@@ -239,8 +243,8 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
 
     textColor := color.RGBA{255, 255, 255, 255} // white
     titleColor := color.RGBA{255, 255, 0, 255}  // yellow
-    busColor := color.RGBA{255, 255, 0, 255}  // yellow
-    timeColor := color.RGBA{0, 255, 255, 255}  // aqua
+    busColor := color.RGBA{255, 255, 0, 255}    // yellow
+    timeColor := color.RGBA{0, 255, 255, 255}   // aqua
 
     WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 0)
 

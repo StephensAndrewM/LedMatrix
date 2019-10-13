@@ -80,6 +80,11 @@ func (this *Slideshow) Stop() {
     this.RedrawTicker.Stop()
     this.AdvanceTicker.Stop()
 
+    // Stop any slide-level tickers
+    for _, s := range this.Slides {
+        s.Terminate()
+    }
+
     // Draw a blank image
     img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
     this.Display.Redraw(img)
