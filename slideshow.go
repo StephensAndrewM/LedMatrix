@@ -13,7 +13,6 @@ type Slideshow struct {
     CurrentSlide   Slide
     CurrentSlideId int
     AdvanceTicker  *time.Ticker
-    RedrawTicker   *time.Ticker
 }
 
 func NewSlideshow(d Display, slides []Slide) *Slideshow {
@@ -25,24 +24,19 @@ func NewSlideshow(d Display, slides []Slide) *Slideshow {
 
 func (this *Slideshow) Start() {
     this.Running = true
-    this.CurrentSlide = NewWelcomeSlide()
     this.CurrentSlideId = -1
 
-    // Redraw ticker - update whatever slide is currently displayed
-    this.RedrawTicker = time.NewTicker(DRAW_INTERVAL)
-    go func() {
-        for range this.RedrawTicker.C {
-            this.DrawCurrent()
-        }
-    }()
+    // Display the welcome slide while loading
+    this.CurrentSlide = NewWelcomeSlide()
+    this.CurrentSlide.StartDraw(this.Display)
 
     // Block until all slides have loaded data
     this.WaitForReadiness()
 
-    // Then advance to the first slide and run for real
+    // Then go to the first slide and run for real
     this.Advance()
 
-    // Advance ticker - increment the slide number periodically
+    // Increment the slide number periodically and start/stop drawing
     this.AdvanceTicker = time.NewTicker(ADVANCE_INTERVAL)
     go func() {
         for range this.AdvanceTicker.C {
@@ -52,16 +46,10 @@ func (this *Slideshow) Start() {
 }
 
 func (this *Slideshow) Advance() {
+    this.CurrentSlide.StopDraw()
     this.CurrentSlideId = (this.CurrentSlideId + 1) % len(this.Slides)
     this.CurrentSlide = this.Slides[this.CurrentSlideId]
-    // Draw now just in case this is out of sync with draw timer
-    this.DrawCurrent()
-}
-
-func (this *Slideshow) DrawCurrent() {
-    img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
-    this.CurrentSlide.Draw(img)
-    this.Display.Redraw(img)
+    this.CurrentSlide.StartDraw(this.Display)
 }
 
 func (this *Slideshow) WaitForReadiness() {
@@ -77,7 +65,7 @@ func (this *Slideshow) WaitForReadiness() {
 
 func (this *Slideshow) Stop() {
     this.Running = false
-    this.RedrawTicker.Stop()
+    this.CurrentSlide.StopDraw()
     this.AdvanceTicker.Stop()
 
     // Stop any slide-level tickers
@@ -86,6 +74,5 @@ func (this *Slideshow) Stop() {
     }
 
     // Draw a blank image
-    img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
-    this.Display.Redraw(img)
+    this.Display.Redraw(NewBlankImage())
 }

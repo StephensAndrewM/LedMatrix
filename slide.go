@@ -4,7 +4,6 @@ import (
     "bytes"
     "fmt"
     log "github.com/sirupsen/logrus"
-    "image"
     "io/ioutil"
     "net/http"
     "os"
@@ -16,8 +15,10 @@ type Slide interface {
     Initialize()
     // Called when slideshow is being stopped
     Terminate()
-    // Called when a new frame is requested to display
-    Draw(base *image.RGBA)
+    // Called when slide is brought into view
+    StartDraw(d Display)
+    // Called when a different slide is brought into view
+    StopDraw()
 }
 
 type HttpCallback func(respBytes []byte) (result bool)

@@ -18,6 +18,8 @@ type WeatherSlide struct {
     HttpHelper   *HttpHelper
     Weather      WeatherApiResponse
     WeatherIcons map[string]*image.RGBA
+
+    RedrawTicker *time.Ticker
 }
 
 var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
@@ -96,6 +98,14 @@ func (this *WeatherSlide) Terminate() {
     this.HttpHelper.StopLoop()
 }
 
+func (this *WeatherSlide) StartDraw(d Display) {
+    this.RedrawTicker = DrawEverySecond(d, this.Draw)
+}
+
+func (this *WeatherSlide) StopDraw() {
+    this.RedrawTicker.Stop()
+}
+
 func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var respData WeatherApiResponse
@@ -121,7 +131,6 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
 }
 
 func (this *WeatherSlide) Draw(img *image.RGBA) {
-
     // Stop immediately if we have errors
     if !this.HttpHelper.LastFetchSuccess {
         DrawError(img, WEATHER_SLIDE_ERROR_SPACE, 1)

@@ -21,6 +21,14 @@ func (this *WelcomeSlide) Terminate() {
     // This won't ever get called since this slide isn't in the main rotation.
 }
 
+func (this *WelcomeSlide) StartDraw(d Display) {
+    DrawOnce(d, this.Draw)
+}
+
+func (this *WelcomeSlide) StopDraw() {
+
+}
+
 func (this *WelcomeSlide) Draw(img *image.RGBA) {
     midpoint := GetLeftOfCenterX(img)
     WriteString(img, "HELLO!", color.RGBA{255, 255, 255, 255}, ALIGN_CENTER, midpoint, 2)

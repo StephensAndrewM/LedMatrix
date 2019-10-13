@@ -17,6 +17,8 @@ type MbtaSlide struct {
     StationName string
     HttpHelper  *HttpHelper
     Predictions []MbtaPrediction
+
+    RedrawTicker *time.Ticker
 }
 
 const MBTA_SLIDE_ERROR_SPACE = 3
@@ -63,6 +65,14 @@ func (this *MbtaSlide) Initialize() {
 
 func (this *MbtaSlide) Terminate() {
     this.HttpHelper.StopLoop()
+}
+
+func (this *MbtaSlide) StartDraw(d Display) {
+    this.RedrawTicker = DrawEverySecond(d, this.Draw)
+}
+
+func (this *MbtaSlide) StopDraw() {
+    this.RedrawTicker.Stop()
 }
 
 func (this *MbtaSlide) Parse(respBytes []byte) bool {

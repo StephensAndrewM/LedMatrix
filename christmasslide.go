@@ -25,6 +25,14 @@ func (this *ChristmasSlide) Terminate() {
 
 }
 
+func (this *ChristmasSlide) StartDraw(d Display) {
+    DrawOnce(d, this.Draw)
+}
+
+func (this *ChristmasSlide) StopDraw() {
+
+}
+
 func (this *ChristmasSlide) Draw(img *image.RGBA) {
     r := color.RGBA{255, 0, 0, 255}
     g := color.RGBA{0, 255, 0, 255}

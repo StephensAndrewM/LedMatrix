@@ -20,7 +20,6 @@ var useWebDisplayFlag = flag.Bool("use_web_display", false,
     "If true, outputs to simulator instead of hardware.")
 
 // Constants that generally don't need to be configured
-const DRAW_INTERVAL = 1 * time.Second
 const ADVANCE_INTERVAL = 15 * time.Second
 const SCREEN_WIDTH = 128
 const SCREEN_HEIGHT = 32

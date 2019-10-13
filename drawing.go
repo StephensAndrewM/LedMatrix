@@ -7,6 +7,7 @@ import (
     "image"
     "image/color"
     "math"
+    "time"
 )
 
 type Alignment int
@@ -17,13 +18,37 @@ const (
     ALIGN_RIGHT
 )
 
+func NewBlankImage() *image.RGBA {
+    return image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+}
+
+func DrawEverySecond(d Display, drawFn func(*image.RGBA)) *time.Ticker {
+    return DrawEveryInterval(1*time.Second, d, drawFn)
+}
+
+func DrawEveryInterval(interval time.Duration, d Display, drawFn func(*image.RGBA)) *time.Ticker {
+    t := time.NewTicker(interval)
+    go func() {
+        for range t.C {
+            DrawOnce(d, drawFn)
+        }
+    }()
+    return t
+}
+
+func DrawOnce(d Display, drawFn func(*image.RGBA)) {
+    img := NewBlankImage()
+    drawFn(img)
+    d.Redraw(img)
+}
+
 func WriteString(img *image.RGBA, str string, c color.RGBA, align Alignment, x int, y int) {
     WriteStringBoxed(img, str, c, align, x, y, 0)
 }
 
 func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment, x int, y int, max int) {
     // This shouldn't happen, but is an indicator to just not draw anything
-    if (max < 0) {
+    if max < 0 {
         return
     }
 
@@ -194,7 +219,7 @@ func DrawNormalizedGraph(img *image.RGBA, x, y, h int, min, max float64, c color
     }
     for i, val := range normalized {
         // Zero-check and +1 needed so we don't draw a point for a zero value
-        if (val > 0) {
+        if val > 0 {
             DrawVertLine(img, c, y-val+1, y, x+i)
         }
     }

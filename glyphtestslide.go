@@ -30,16 +30,24 @@ func (this *GlyphTestSlide) Terminate() {
 
 }
 
-func (sl *GlyphTestSlide) Draw(img *image.RGBA) {
+func (this *GlyphTestSlide) StartDraw(d Display) {
+    DrawOnce(d, this.Draw)
+}
+
+func (this *GlyphTestSlide) StopDraw() {
+
+}
+
+func (this *GlyphTestSlide) Draw(img *image.RGBA) {
     midpoint := GetLeftOfCenterX(img)
     c := color.RGBA{255, 255, 255, 255}
-    if sl.Test == TEST_LETTERS {
+    if this.Test == TEST_LETTERS {
         WriteString(img, "THE QUICK BROWN FOX", c, ALIGN_CENTER, midpoint, 0)
         WriteString(img, "JUMPS OVER THE LAZY DOG", c, ALIGN_CENTER, midpoint, 8)
         WriteString(img, "the quick brown fox", c, ALIGN_CENTER, midpoint, 16)
         WriteString(img, "jumps over the lazy dog", c, ALIGN_CENTER, midpoint, 24)
 
-    } else if sl.Test == TEST_NUMSYM {
+    } else if this.Test == TEST_NUMSYM {
         WriteString(img, "1234567890", c, ALIGN_CENTER, midpoint, 4)
         WriteString(img, "1/2 30° ❤ 6:30", c, ALIGN_CENTER, midpoint, 20)
     }

@@ -8,6 +8,7 @@ import (
 )
 
 type TimeSlide struct {
+    RedrawTicker *time.Ticker
 }
 
 func NewTimeSlide() *TimeSlide {
@@ -21,6 +22,14 @@ func (this *TimeSlide) Initialize() {
 
 func (this *TimeSlide) Terminate() {
 
+}
+
+func (this *TimeSlide) StartDraw(d Display) {
+    this.RedrawTicker = DrawEverySecond(d, this.Draw)
+}
+
+func (this *TimeSlide) StopDraw() {
+    this.RedrawTicker.Stop()
 }
 
 func (this *TimeSlide) Draw(img *image.RGBA) {
