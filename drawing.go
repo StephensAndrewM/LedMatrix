@@ -2,7 +2,6 @@ package main
 
 import (
     "encoding/hex"
-    "fmt"
     log "github.com/sirupsen/logrus"
     "image"
     "image/color"
@@ -137,10 +136,11 @@ func DrawVertLine(img *image.RGBA, c color.RGBA, y1 int, y2 int, x int) {
     }
 }
 
-func DrawError(img *image.RGBA, space int, code int) {
+func DrawError(img *image.RGBA, slideName, error string) {
+    white := color.RGBA{255, 255, 255, 255}
     yellow := color.RGBA{255, 255, 0, 255}
-    msg := fmt.Sprintf("E #%02d-%02d", space, code)
-    WriteString(img, msg, yellow, ALIGN_LEFT, 0, 0)
+    WriteString(img, slideName, white, ALIGN_CENTER, SCREEN_WIDTH/2, 8)
+    WriteString(img, error, yellow, ALIGN_CENTER, SCREEN_WIDTH/2, 16)
 }
 
 // Map black pixels to given color, all other colors to transparent

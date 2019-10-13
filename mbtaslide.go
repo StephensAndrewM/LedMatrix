@@ -21,8 +21,6 @@ type MbtaSlide struct {
     RedrawTicker *time.Ticker
 }
 
-const MBTA_SLIDE_ERROR_SPACE = 3
-
 // Station names - used in constructor
 // This is not an exhaustive list, just some easy ones
 const MBTA_STATION_ID_DAVIS = "place-davis"
@@ -247,7 +245,7 @@ func (this *MbtaSlide) FilterTimesInPast(all []MbtaPrediction) (ret []MbtaPredic
 
 func (this *MbtaSlide) Draw(img *image.RGBA) {
     if !this.HttpHelper.LastFetchSuccess {
-        DrawError(img, MBTA_SLIDE_ERROR_SPACE, 1)
+        DrawError(img, "MBTA Trains", "No data.")
         return
     }
 
@@ -256,14 +254,14 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
     busColor := color.RGBA{255, 255, 0, 255}    // yellow
     timeColor := color.RGBA{0, 255, 255, 255}   // aqua
 
-    WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 0)
-
     filteredPredictions := this.FilterTimesInPast(this.Predictions)
 
-    if len(this.Predictions) == 0 {
-        // TODO display something here
+    if len(filteredPredictions) == 0 {
+        DrawError(img, "MBTA Trains", "No predictions.")
         return
     }
+
+    WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 0)
 
     // Resort prediction time sets based on current time
     sort.Slice(filteredPredictions, func(i, j int) bool {

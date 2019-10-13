@@ -32,7 +32,6 @@ const BOSTON_LATLNG = "42.2129,-71.0349"
 const WEATHER_COL_WIDTH = 32
 const WEATHER_COL_CENTER = 16
 const WEATHER_ICON_WIDTH = 16
-const WEATHER_SLIDE_ERROR_SPACE = 4
 
 var WEATHER_API_ICON_MAP = map[string]string{
     "rain":                "rain1.xbm.png",
@@ -133,7 +132,7 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
 func (this *WeatherSlide) Draw(img *image.RGBA) {
     // Stop immediately if we have errors
     if !this.HttpHelper.LastFetchSuccess {
-        DrawError(img, WEATHER_SLIDE_ERROR_SPACE, 1)
+        DrawError(img, "Weather", "No data.")
         return
     }
 
