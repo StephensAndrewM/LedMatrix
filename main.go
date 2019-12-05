@@ -12,6 +12,7 @@ func GetSlides() []Slide {
         NewTimeSlide(),
         NewMbtaSlide(MBTA_STATION_ID_MGH),
         NewWeatherSlide(BOSTON_LATLNG),
+        NewChristmasSlide(),
     }
 }
 

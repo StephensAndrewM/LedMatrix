@@ -42,7 +42,7 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
         log.Warn("Could not load time zone.")
         return
     }
-    ptoDate := time.Date(2018, time.December, 21, 0, 0, 0, 0, tz)
+    ptoDate := time.Date(2019, time.December, 21, 0, 0, 0, 0, tz)
     ptoDiff := time.Until(ptoDate).Hours() / 24.0
 
     DrawEmptyBox(img, r, 23, 1, 18, 13)
@@ -50,7 +50,7 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
     WriteString(img, "DAYS UNTIL", g, ALIGN_CENTER, 32, 16)
     WriteString(img, "VACATION", g, ALIGN_CENTER, 32, 24)
 
-    xmasDate := time.Date(2018, time.December, 25, 0, 0, 0, 0, tz)
+    xmasDate := time.Date(2019, time.December, 25, 0, 0, 0, 0, tz)
     xmasDiff := time.Until(xmasDate).Hours() / 24.0
 
     DrawEmptyBox(img, r, 87, 1, 18, 13)
