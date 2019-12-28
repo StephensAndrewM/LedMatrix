@@ -5,8 +5,9 @@ import (
 )
 
 type Slideshow struct {
-    Display Display
-    Slides  []Slide
+    Display         Display
+    AdvanceInterval time.Duration
+    Slides          []Slide
 
     Running        bool
     CurrentSlide   Slide
@@ -14,10 +15,11 @@ type Slideshow struct {
     AdvanceTicker  *time.Ticker
 }
 
-func NewSlideshow(d Display, slides []Slide) *Slideshow {
+func NewSlideshow(d Display, config *Config) *Slideshow {
     this := new(Slideshow)
     this.Display = d
-    this.Slides = slides
+    this.AdvanceInterval = config.AdvanceInterval
+    this.Slides = config.Slides
     return this
 }
 
@@ -36,7 +38,7 @@ func (this *Slideshow) Start() {
     this.Advance()
 
     // Increment the slide number periodically and start/stop drawing
-    this.AdvanceTicker = time.NewTicker(ADVANCE_INTERVAL)
+    this.AdvanceTicker = time.NewTicker(this.AdvanceInterval)
     go func() {
         for range this.AdvanceTicker.C {
             this.Advance()

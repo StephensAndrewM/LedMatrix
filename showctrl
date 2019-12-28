@@ -3,6 +3,6 @@
 # Simple script for sending the approriate HTTP request to control the show
 # Usage: 
 #   ./showctrl <command>
-#   <command> := start|stop
+#   <command> := start|stop|shutdown
 
-curl -X POST http://localhost:5000/$1
+curl -iX POST http://localhost:5000/$1
