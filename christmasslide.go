@@ -42,19 +42,24 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
         log.Warn("Could not load time zone.")
         return
     }
-    ptoDate := time.Date(2019, time.December, 21, 0, 0, 0, 0, tz)
-    ptoDiff := time.Until(ptoDate).Hours() / 24.0
 
+    ptoDate := time.Date(2019, time.December, 21, 0, 0, 0, 0, tz)
     DrawEmptyBox(img, r, 23, 1, 18, 13)
-    WriteString(img, fmt.Sprintf("%d", int(math.Ceil(ptoDiff))), r, ALIGN_CENTER, 32, 4)
+    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(ptoDate)), r, ALIGN_CENTER, 32, 4)
     WriteString(img, "DAYS UNTIL", g, ALIGN_CENTER, 32, 16)
     WriteString(img, "VACATION", g, ALIGN_CENTER, 32, 24)
 
     xmasDate := time.Date(2019, time.December, 25, 0, 0, 0, 0, tz)
-    xmasDiff := time.Until(xmasDate).Hours() / 24.0
-
     DrawEmptyBox(img, r, 87, 1, 18, 13)
-    WriteString(img, fmt.Sprintf("%d", int(math.Ceil(xmasDiff))), r, ALIGN_CENTER, 96, 4)
+    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(xmasDate)), r, ALIGN_CENTER, 96, 4)
     WriteString(img, "DAYS UNTIL", g, ALIGN_CENTER, 96, 16)
     WriteString(img, "CHRISTMAS", g, ALIGN_CENTER, 96, 24)
+}
+
+func (this *ChristmasSlide) DaysUntil(d time.Time) int {
+    diff := time.Until(d).Hours() / 24.0
+    if diff < 0 {
+        return 0
+    }
+    return int(math.Ceil(diff))
 }
