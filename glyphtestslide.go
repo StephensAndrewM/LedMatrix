@@ -38,6 +38,10 @@ func (this *GlyphTestSlide) StopDraw() {
 
 }
 
+func (this *GlyphTestSlide) IsEnabled() bool {
+    return true // Always enabled
+}
+
 func (this *GlyphTestSlide) Draw(img *image.RGBA) {
     midpoint := GetLeftOfCenterX(img)
     c := color.RGBA{255, 255, 255, 255}

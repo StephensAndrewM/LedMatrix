@@ -73,6 +73,10 @@ func (this *MbtaSlide) StopDraw() {
     this.RedrawTicker.Stop()
 }
 
+func (this *MbtaSlide) IsEnabled() bool {
+    return true // Always enabled
+}
+
 func (this *MbtaSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var resp MbtaApiResponse

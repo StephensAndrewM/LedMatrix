@@ -31,6 +31,10 @@ func (this *TimeSlide) StopDraw() {
     this.RedrawTicker.Stop()
 }
 
+func (this *TimeSlide) IsEnabled() bool {
+    return true // Always enabled
+}
+
 func (this *TimeSlide) Draw(img *image.RGBA) {
     t := time.Now()
     l1 := t.Format("Monday January 2")

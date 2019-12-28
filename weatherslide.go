@@ -105,6 +105,10 @@ func (this *WeatherSlide) StopDraw() {
     this.RedrawTicker.Stop()
 }
 
+func (this *WeatherSlide) IsEnabled() bool {
+    return true // Always enabled
+}
+
 func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var respData WeatherApiResponse
@@ -119,9 +123,9 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Assert that the response contains what we expect
     if respData.Current.Icon == "" ||
         len(respData.Daily.Data) == 0 {
-            log.WithFields(log.Fields{
-                "error": respData.Error,
-            }).Warn("Weather response data has no data.")
+        log.WithFields(log.Fields{
+            "error": respData.Error,
+        }).Warn("Weather response data has no data.")
         return false
     }
 

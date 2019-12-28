@@ -2,7 +2,6 @@ package main
 
 import (
     "fmt"
-    log "github.com/sirupsen/logrus"
     "image"
     "image/color"
     "math"
@@ -10,6 +9,8 @@ import (
 )
 
 type ChristmasSlide struct {
+    PtoDate  time.Time
+    XmasDate time.Time
 }
 
 func NewChristmasSlide() *ChristmasSlide {
@@ -18,7 +19,9 @@ func NewChristmasSlide() *ChristmasSlide {
 }
 
 func (this *ChristmasSlide) Initialize() {
-
+    t := time.Now()
+    this.PtoDate = time.Date(t.Year(), time.December, 21, 0, 0, 0, 0, time.Local)
+    this.XmasDate = time.Date(t.Year(), time.December, 25, 0, 0, 0, 0, time.Local)
 }
 
 func (this *ChristmasSlide) Terminate() {
@@ -33,25 +36,21 @@ func (this *ChristmasSlide) StopDraw() {
 
 }
 
+func (this *ChristmasSlide) IsEnabled() bool {
+    return this.DaysUntil(this.XmasDate) >= 0 && this.DaysUntil(this.XmasDate) > 30
+}
+
 func (this *ChristmasSlide) Draw(img *image.RGBA) {
     r := color.RGBA{255, 0, 0, 255}
     g := color.RGBA{0, 255, 0, 255}
-    tz, err := time.LoadLocation("America/New_York")
-    if err != nil {
-        // No idea why this would ever happen
-        log.Warn("Could not load time zone.")
-        return
-    }
 
-    ptoDate := time.Date(2019, time.December, 21, 0, 0, 0, 0, tz)
     DrawEmptyBox(img, r, 23, 1, 18, 13)
-    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(ptoDate)), r, ALIGN_CENTER, 32, 4)
+    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(this.PtoDate)), r, ALIGN_CENTER, 32, 4)
     WriteString(img, "DAYS UNTIL", g, ALIGN_CENTER, 32, 16)
     WriteString(img, "VACATION", g, ALIGN_CENTER, 32, 24)
 
-    xmasDate := time.Date(2019, time.December, 25, 0, 0, 0, 0, tz)
     DrawEmptyBox(img, r, 87, 1, 18, 13)
-    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(xmasDate)), r, ALIGN_CENTER, 96, 4)
+    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(this.XmasDate)), r, ALIGN_CENTER, 96, 4)
     WriteString(img, "DAYS UNTIL", g, ALIGN_CENTER, 96, 16)
     WriteString(img, "CHRISTMAS", g, ALIGN_CENTER, 96, 24)
 }

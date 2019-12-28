@@ -48,8 +48,18 @@ func (this *Slideshow) Start() {
 
 func (this *Slideshow) Advance() {
     this.CurrentSlide.StopDraw()
-    this.CurrentSlideId = (this.CurrentSlideId + 1) % len(this.Slides)
-    this.CurrentSlide = this.Slides[this.CurrentSlideId]
+
+    for {
+        this.CurrentSlideId = (this.CurrentSlideId + 1) % len(this.Slides)
+        this.CurrentSlide = this.Slides[this.CurrentSlideId]
+        // If the slide is enabled, stop the loop
+        if this.CurrentSlide.IsEnabled() {
+            break
+        }
+        // Otherwise we loop until we find an enabled slide
+        // TODO make sure this doesn't get stuck if no slide is enabled
+    }
+
     this.CurrentSlide.StartDraw(this.Display)
 }
 
