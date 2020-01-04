@@ -37,7 +37,7 @@ func (this *ChristmasSlide) StopDraw() {
 }
 
 func (this *ChristmasSlide) IsEnabled() bool {
-    return this.DaysUntil(this.XmasDate) >= 0 && this.DaysUntil(this.XmasDate) > 30
+    return this.DaysUntil(this.XmasDate) >= 0 && this.DaysUntil(this.XmasDate) <= 30
 }
 
 func (this *ChristmasSlide) Draw(img *image.RGBA) {
