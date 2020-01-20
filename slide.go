@@ -23,15 +23,17 @@ type Slide interface {
     IsEnabled() bool
 }
 
-type HttpCallback func(respBytes []byte) (result bool)
+type HttpCallback func(resBytes []byte) (result bool)
 
 type HttpHelper struct {
-    BaseUrl          string
-    RefreshInterval  time.Duration
-    Callback         HttpCallback
-    LastFetchSuccess bool
-
-    RefreshTicker *time.Ticker
+    BaseUrl           string
+    RefreshInterval   time.Duration
+    Callback          HttpCallback
+    BasicAuthUsername string
+    BasicAuthPassword string
+    LastFetchSuccess  bool
+    Client            *http.Client
+    RefreshTicker     *time.Ticker
 }
 
 func NewHttpHelper(baseUrl string, refreshInterval time.Duration, callback HttpCallback) *HttpHelper {
@@ -39,10 +41,18 @@ func NewHttpHelper(baseUrl string, refreshInterval time.Duration, callback HttpC
     h.BaseUrl = baseUrl
     h.RefreshInterval = refreshInterval
     h.Callback = callback
+    h.Client = &http.Client{}
     log.WithFields(log.Fields{
         "url":      baseUrl,
         "interval": refreshInterval,
     }).Debug("HttpHelper created.")
+    return h
+}
+
+func NewHttpHelperWithAuth(baseUrl string, refreshInterval time.Duration, callback HttpCallback, username, password string) *HttpHelper {
+    h := NewHttpHelper(baseUrl, refreshInterval, callback)
+    h.BasicAuthUsername = username
+    h.BasicAuthPassword = password
     return h
 }
 
@@ -69,21 +79,35 @@ func (this *HttpHelper) StopLoop() {
 }
 
 func (this *HttpHelper) Fetch() {
-    resp, httpErr := http.Get(this.BaseUrl)
-    if httpErr != nil {
+    req, reqErr := http.NewRequest("GET", this.BaseUrl, nil)
+    if reqErr != nil {
         log.WithFields(log.Fields{
             "url":   this.BaseUrl,
-            "error": httpErr,
-        }).Warn("HTTP error in HttpHelper.")
+            "error": reqErr,
+        }).Warn("Request error in HttpHelper")
+        this.LastFetchSuccess = false
+        return
+    }
+    // Set up HTTP auth, if needed
+    if this.BasicAuthUsername != "" && this.BasicAuthPassword != "" {
+        req.SetBasicAuth(this.BasicAuthUsername, this.BasicAuthPassword)
+    }
+
+    res, resErr := this.Client.Do(req)
+    if resErr != nil {
+        log.WithFields(log.Fields{
+            "url":   this.BaseUrl,
+            "error": resErr,
+        }).Warn("Response error in HttpHelper.")
         this.LastFetchSuccess = false
         return
     }
 
-    respBuf := new(bytes.Buffer)
-    respBuf.ReadFrom(resp.Body)
-    respBytes := respBuf.Bytes()
+    resBuf := new(bytes.Buffer)
+    resBuf.ReadFrom(res.Body)
+    resBytes := resBuf.Bytes()
 
-    this.LastFetchSuccess = this.Callback(respBytes)
+    this.LastFetchSuccess = this.Callback(resBytes)
 
     log.WithFields(log.Fields{
         "url":     this.BaseUrl,
@@ -92,6 +116,11 @@ func (this *HttpHelper) Fetch() {
 
     // Output debug file, maybe
     if DEBUG_HTTP {
-        ioutil.WriteFile(fmt.Sprintf("debug/%d.txt", time.Now().Unix()), respBytes, os.FileMode(770))
+        outFile := fmt.Sprintf("debug/%d.txt", time.Now().Unix())
+        log.WithFields(log.Fields{
+            "url":     this.BaseUrl,
+            "outFile": this.outFile,
+        }).Debug("Logged HTTP response data.")
+        ioutil.WriteFile(outFile, resBytes, os.FileMode(770))
     }
 }
