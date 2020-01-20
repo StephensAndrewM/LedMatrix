@@ -12,13 +12,16 @@ import (
     "os"
     "strings"
     "time"
+    "net/http"
 )
 
 type WeatherSlide struct {
-    HttpHelper   *HttpHelper
+    LatLng     string
+
     Weather      WeatherApiResponse
     WeatherIcons map[string]*image.RGBA
 
+    HttpHelper *HttpHelper
     RedrawTicker *time.Ticker
 }
 
@@ -48,12 +51,8 @@ var WEATHER_API_ICON_MAP = map[string]string{
 
 func NewWeatherSlide(latLng string) *WeatherSlide {
     this := new(WeatherSlide)
-
-    // Set up HTTP fetcher
-    url := fmt.Sprintf("https://api.darksky.net/forecast/%s/%s",
-        WEATHER_API_KEY, latLng)
-    refresh := 2 * time.Minute
-    this.HttpHelper = NewHttpHelper(url, refresh, this.Parse)
+    this.LatLng = latLng
+    this.HttpHelper = NewHttpHelper(this)
 
     // Preload all the weather icons
     this.WeatherIcons = make(map[string]*image.RGBA)
@@ -107,6 +106,17 @@ func (this *WeatherSlide) StopDraw() {
 
 func (this *WeatherSlide) IsEnabled() bool {
     return true // Always enabled
+}
+
+func (this *WeatherSlide) GetRefreshInterval() time.Duration {
+    return 2 * time.Minute
+}
+
+func (this *WeatherSlide) BuildRequest() (*http.Request, error) {
+    url := fmt.Sprintf("https://api.darksky.net/forecast/%s/%s",
+        WEATHER_API_KEY, this.LatLng)
+
+    return http.NewRequest("GET", url, nil)
 }
 
 func (this *WeatherSlide) Parse(respBytes []byte) bool {

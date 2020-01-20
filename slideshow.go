@@ -1,6 +1,8 @@
 package main
 
 import (
+    log "github.com/sirupsen/logrus"
+    "net/http"
     "time"
 )
 
@@ -33,6 +35,8 @@ func (this *Slideshow) Start() {
 
     // Block until all slides have loaded data
     this.WaitForReadiness()
+
+    log.Info("All slides reported readiness.")
 
     // Then go to the first slide and run for real
     this.Advance()
@@ -86,4 +90,30 @@ func (this *Slideshow) Stop() {
 
     // Draw a blank image
     this.Display.Redraw(NewBlankImage())
+}
+
+// Checks for internet periodically, not returning until connected.
+func WaitForConnection() {
+    c := 1
+    for {
+        if ConnectionPresent() {
+            log.WithFields(log.Fields{
+                "checks": c,
+            }).Info("Internet connection present.")
+            return
+        }
+        time.Sleep(1 * time.Second)
+        c++
+    }
+}
+
+// Sanity check for internet access. Not bulletproof but works.
+func ConnectionPresent() bool {
+    _, err := http.Get("http://clients3.google.com/generate_204")
+    if err != nil {
+        log.WithFields(log.Fields{
+            "error": err,
+        }).Debug("Connection failed.")
+    }
+    return err == nil
 }

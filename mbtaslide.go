@@ -11,13 +11,15 @@ import (
     "strconv"
     "strings"
     "time"
+    "net/http"
 )
 
 type MbtaSlide struct {
+    StationId   string
     StationName string
-    HttpHelper  *HttpHelper
     Predictions []MbtaPrediction
 
+    HttpHelper  *HttpHelper
     RedrawTicker *time.Ticker
 }
 
@@ -46,13 +48,10 @@ func NewMbtaSlide(stationId string) *MbtaSlide {
         }).Warn("Could not find station name.")
         name = "?????"
     }
+    this.StationId = stationId
     this.StationName = name
 
-    // Set up HTTP fetcher
-    url := fmt.Sprintf("https://api-v3.mbta.com/predictions"+
-        "?include=route,trip&filter[stop]=%s", stationId)
-    refresh := 60 * time.Second
-    this.HttpHelper = NewHttpHelper(url, refresh, this.Parse)
+    this.HttpHelper = NewHttpHelper(this)
 
     return this
 }
@@ -75,6 +74,16 @@ func (this *MbtaSlide) StopDraw() {
 
 func (this *MbtaSlide) IsEnabled() bool {
     return true // Always enabled
+}
+
+func (this *MbtaSlide) GetRefreshInterval() time.Duration {
+    return 1 * time.Minute
+}
+
+func (this *MbtaSlide) BuildRequest() (*http.Request, error) {
+    url := fmt.Sprintf("https://api-v3.mbta.com/predictions"+
+        "?include=route,trip&filter[stop]=%s", this.StationId)
+    return http.NewRequest("GET", url, nil)
 }
 
 func (this *MbtaSlide) Parse(respBytes []byte) bool {

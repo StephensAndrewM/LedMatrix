@@ -8,11 +8,14 @@ import (
     "image"
     "image/color"
     "time"
+    "net/http"
 )
 
 type FlightSlide struct {
     // Set of flights/days that the user wants to track
     TrackedFlights []FlightAndDay
+    // Flight currently being displayed/requested
+    ActiveFlight FlightAndDay
 
     HttpHelper   *HttpHelper
     RedrawTicker *time.Ticker
@@ -26,6 +29,7 @@ type FlightAndDay struct {
 
 func NewFlightSlide(flights map[string]string) *FlightSlide {
     this := new(FlightSlide)
+    this.HttpHelper = NewHttpHelper(this)
 
     // Copy the flights from the input into a struct (to be used later)
     // Expected input is date (e.g. "2020-01-15") to flight (e.g AA 1234).
@@ -48,11 +52,15 @@ func NewFlightSlide(flights map[string]string) *FlightSlide {
 
 func (this *FlightSlide) Initialize() {
     // Get the flight to focus on
-    ok, flight := this.GetActiveFlight()
+    flight, ok := this.GetActiveFlight()
     log.WithFields(log.Fields{
         "ok":     ok,
         "flight": flight,
-    }).Info("Chose flight")
+    }).Debug("Chose flight")
+    if !ok {
+        return
+    }
+    this.ActiveFlight = flight
 
     // For development, always read data from file instead of live API call
     /*f := "flight_sample.json"
@@ -66,19 +74,13 @@ func (this *FlightSlide) Initialize() {
       }
       this.Parse(data)*/
 
-    // Set up HTTP fetcher
-    url := fmt.Sprintf(
-        "http://flightxml.flightaware.com/json/FlightXML3/FlightInfoStatus?ident=%s&howMany=5",
-        flight.Id)
-    refresh := 10 * time.Minute
-    this.HttpHelper = NewHttpHelperWithAuth(url, refresh, this.Parse, FLIGHTAWARE_USERNAME, FLIGHTAWARE_API_KEY)
+    // Start fetching data     
     this.HttpHelper.StartLoop()
 }
 
 func (this *FlightSlide) Terminate() {
-    if this.HttpHelper != nil {
-        this.HttpHelper.StopLoop()
-    }
+    // Fetching might already be stopped if flight is complete
+    this.HttpHelper.StopLoop()
 }
 
 func (this *FlightSlide) StartDraw(d Display) {
@@ -91,8 +93,23 @@ func (this *FlightSlide) StopDraw() {
 
 func (this *FlightSlide) IsEnabled() bool {
     // Slide should be enabled if there is an active flight
-    ok, _ := this.GetActiveFlight()
+    _, ok := this.GetActiveFlight()
     return ok
+}
+
+func (this *FlightSlide) GetRefreshInterval() time.Duration {
+    return 10 * time.Minute
+}
+
+func (this *FlightSlide) BuildRequest() (*http.Request, error) {
+    url := fmt.Sprintf(
+        "http://flightxml.flightaware.com/json/FlightXML3/FlightInfoStatus?ident=%s&howMany=5",
+        this.ActiveFlight.Id)
+     req,err := http.NewRequest("GET", url, nil)
+     if err != nil {
+         req.SetBasicAuth(FLIGHTAWARE_USERNAME, FLIGHTAWARE_API_KEY)
+     }
+     return req,err
 }
 
 func (this *FlightSlide) Parse(respBytes []byte) bool {
@@ -105,7 +122,7 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
         return false
     }
 
-    var displayData FlightDisplayData
+    displayData := FlightDisplayData{}
 
     // First we find the flight that was meant to depart today
     var targetFlight FlightInfoStatus
@@ -123,8 +140,7 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
     if targetFlight == (FlightInfoStatus{}) {
         log.Info("No matching flight found in response")
         this.DisplayData = displayData
-        // Return true so we don't immediately re-request
-        return true
+        return false
     }
 
     displayData.Title = fmt.Sprintf("%s %s",
@@ -162,7 +178,6 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
         // If the flight has arrived, stop requesting new data
         log.Info("Flight has arrived, stopping HTTP fetcher")
         this.HttpHelper.StopLoop()
-        this.HttpHelper = nil
     }
     displayData.ArrivalDelay = time.Duration(targetFlight.ArrivalDelay) * time.Second
 
@@ -172,13 +187,13 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
     return true
 }
 
-func (this *FlightSlide) GetActiveFlight() (bool, FlightAndDay) {
+func (this *FlightSlide) GetActiveFlight() (FlightAndDay, bool) {
     for i := range this.TrackedFlights {
         if this.TrackedFlights[i].Date == civil.DateOf(time.Now()) {
-            return true, this.TrackedFlights[i]
+            return this.TrackedFlights[i], true
         }
     }
-    return false, FlightAndDay{}
+    return FlightAndDay{}, false
 }
 
 func (this *FlightSlide) GetDurationString(d time.Duration) string {
