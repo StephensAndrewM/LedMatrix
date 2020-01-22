@@ -57,6 +57,7 @@ func (this *FlightSlide) Initialize() {
         "ok":     ok,
         "flight": flight,
     }).Debug("Chose flight")
+    // If no active flight, return immediately
     if !ok {
         return
     }
@@ -222,7 +223,7 @@ func (this *FlightSlide) Draw(img *image.RGBA) {
     white := color.RGBA{255, 255, 255, 255}
     black := color.RGBA{0, 0, 0, 255}
 
-    // Show flight ID on tiop line
+    // Show flight ID on top line
     WriteString(img, this.DisplayData.Title, aqua, ALIGN_CENTER, 64, 0)
 
     // Draw origin/destination boxes on sides

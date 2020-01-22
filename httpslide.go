@@ -36,6 +36,13 @@ func NewHttpHelper(slide HttpSlide) *HttpHelper {
 }
 
 func (this *HttpHelper) StartLoop() {
+    if this.RefreshTicker != nil {
+        log.WithFields(log.Fields{
+            "slide": fmt.Sprintf("%T", this.Slide),
+        }).Warn("Attempting to start HTTP loop when already started.")
+        return
+    }
+
     req, err := this.Slide.BuildRequest()
     log.WithFields(log.Fields{
         "req":      req,
@@ -59,7 +66,14 @@ func (this *HttpHelper) StartLoop() {
 }
 
 func (this *HttpHelper) StopLoop() {
+    if this.RefreshTicker == nil {
+        log.WithFields(log.Fields{
+            "slide": fmt.Sprintf("%T", this.Slide),
+        }).Warn("Attempting to stop HTTP loop when already stopped.")
+        return
+    }
     this.RefreshTicker.Stop()
+    this.RefreshTicker = nil
 }
 
 func (this *HttpHelper) Fetch() {
