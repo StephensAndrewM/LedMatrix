@@ -75,7 +75,7 @@ func (this *FlightSlide) Initialize() {
       }
       this.Parse(data)*/
 
-    // Start fetching data     
+    // Start fetching data
     this.HttpHelper.StartLoop()
 }
 
@@ -108,9 +108,10 @@ func (this *FlightSlide) BuildRequest() (*http.Request, error) {
         this.ActiveFlight.Id)
      req,err := http.NewRequest("GET", url, nil)
      if err != nil {
-         req.SetBasicAuth(FLIGHTAWARE_USERNAME, FLIGHTAWARE_API_KEY)
+       return nil,err
      }
-     return req,err
+     req.SetBasicAuth(FLIGHTAWARE_USERNAME, FLIGHTAWARE_API_KEY)
+     return req,nil
 }
 
 func (this *FlightSlide) Parse(respBytes []byte) bool {
@@ -119,6 +120,7 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
     if jsonErr != nil {
         log.WithFields(log.Fields{
             "error": jsonErr,
+            "data": string(respBytes),
         }).Warn("Could not interpret flights JSON.")
         return false
     }
