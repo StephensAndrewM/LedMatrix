@@ -44,6 +44,9 @@ func (this *CoronavirusSlide) Draw(img *image.RGBA) {
     start := time.Date(2020, time.March, 10, 0, 0, 0, 0, time.Local)
     diff := int(math.Ceil(time.Since(start).Hours()/24.0)) - 1
 
+    DrawIcon(img, "biohazard-16", r, 8, 2)
+    DrawIcon(img, "biohazard-16", r, (128-8-16), 2)
+
     DrawEmptyBox(img, y, 54, 1, 20, 13)
     WriteString(img, fmt.Sprintf("%d", diff), y, ALIGN_CENTER, 64, 4)
 

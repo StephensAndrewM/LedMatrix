@@ -42,8 +42,9 @@ func main() {
         FullTimestamp: true,
     })
 
-    // Set up the glyph mappings
+    // Set up the glyph and icon mappings
     InitGlyphs()
+    InitIcons()
 
     // Set up the display - use hardware as default
     var d Display

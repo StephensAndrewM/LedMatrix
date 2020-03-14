@@ -104,6 +104,17 @@ func WriteGlyph(img *image.RGBA, g Glyph, c color.RGBA, x int, y int) {
     }
 }
 
+func DrawIcon(img *image.RGBA, iconName string, c color.RGBA, x int, y int) {
+	icon := GetIcon(iconName)
+	for j, row := range icon.Layout {
+        for i, val := range row {
+            if val != 0 {
+                img.SetRGBA(x+int(i), y+int(j), c)
+            }
+        }
+    }	
+}
+
 func DrawBox(img *image.RGBA, c color.RGBA, x int, y int, width int, height int) {
     for j := y; j < y+height; j++ {
         for i := x; i < x+width; i++ {
