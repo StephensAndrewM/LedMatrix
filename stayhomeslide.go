@@ -8,36 +8,36 @@ import (
     "time"
 )
 
-type CoronavirusSlide struct {
+type StayHomeSlide struct {
 }
 
-func NewCoronavirusSlide() *CoronavirusSlide {
-    sl := new(CoronavirusSlide)
+func NewStayHomeSlide() *StayHomeSlide {
+    sl := new(StayHomeSlide)
     return sl
 }
 
-func (this *CoronavirusSlide) Initialize() {
+func (this *StayHomeSlide) Initialize() {
 
 }
 
-func (this *CoronavirusSlide) Terminate() {
+func (this *StayHomeSlide) Terminate() {
 
 }
 
-func (this *CoronavirusSlide) StartDraw(d Display) {
+func (this *StayHomeSlide) StartDraw(d Display) {
     DrawOnce(d, this.Draw)
 }
 
-func (this *CoronavirusSlide) StopDraw() {
+func (this *StayHomeSlide) StopDraw() {
 
 }
 
-func (this *CoronavirusSlide) IsEnabled() bool {
+func (this *StayHomeSlide) IsEnabled() bool {
     // TODO disable this if we all survive
     return true
 }
 
-func (this *CoronavirusSlide) Draw(img *image.RGBA) {
+func (this *StayHomeSlide) Draw(img *image.RGBA) {
     y := color.RGBA{255, 255, 0, 255}
     r := color.RGBA{255, 0, 0, 255}
 
