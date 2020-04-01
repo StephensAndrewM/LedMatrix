@@ -51,5 +51,5 @@ func (this *StayHomeSlide) Draw(img *image.RGBA) {
     WriteString(img, fmt.Sprintf("%d", diff), y, ALIGN_CENTER, 64, 4)
 
     WriteString(img, "DAYS SINCE", r, ALIGN_CENTER, 64, 16)
-    WriteString(img, "START OF QUARANTINE", r, ALIGN_CENTER, 64, 24)
+    WriteString(img, "OFFICES CLOSED", r, ALIGN_CENTER, 64, 24)
 }
