@@ -2,14 +2,15 @@ package main
 
 import (
     "cloud.google.com/go/civil"
+    "encoding/csv"
     "fmt"
     log "github.com/sirupsen/logrus"
     "image"
     "image/color"
-    "time"
-    "encoding/csv"
     "net/http"
     "strconv"
+    "time"
+    "math"
 )
 
 type CovidSlide struct {
@@ -65,52 +66,52 @@ func (this *CovidSlide) Draw(img *image.RGBA) {
     y := color.RGBA{255, 255, 0, 255}
     w := color.RGBA{255, 255, 255, 255}
 
-    WriteString(img, "COVID-19 CASES", r, ALIGN_LEFT, 0, 0)
-    WriteString(img, "#", r, ALIGN_RIGHT, 100, 0)
-    WriteString(img, "%Δ", r, ALIGN_RIGHT, 127, 0)
+    WriteString(img, "COVID-19 CASES", r, ALIGN_CENTER, 63, 2)
 
     d1 := civil.DateOf(time.Now().AddDate(0, 0, -1))
     d2 := civil.DateOf(time.Now().AddDate(0, 0, -2))
 
-    WriteString(img, "United States", w, ALIGN_LEFT, 0, 12)
+    WriteString(img, "United States", w, ALIGN_LEFT, 1, 13)
     if n1, ok := this.UsCases[d1]; ok {
-        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 100, 12)
+        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 92, 13)
         if n2, ok := this.UsCases[d2]; ok {
-            WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 127, 12)
+            WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 126, 13)
         }
     }
 
-    WriteString(img, "Massachusetts", w, ALIGN_LEFT, 0, 20)
+    WriteString(img, "Massachusetts", w, ALIGN_LEFT, 1, 22)
     if n1, ok := this.MaCases[d1]; ok {
-        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 100, 20)
+        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 92, 22)
         if n2, ok := this.MaCases[d2]; ok {
-            WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 127, 20)
+            WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 126, 22)
         }
     }
 }
 
 // Limit to only displaying four glyphs max
 func (this *CovidSlide) Format(n int) string {
-    if n >= 10000000 {
-        return fmt.Sprintf("%.0fM", float64(n)/float64(1000000))
-    } else if n >= 1000000 {
-        return fmt.Sprintf("%.1fM", float64(n)/float64(1000000))
-    } else if n > 100000 {
+    // Switch on number of digits in the number
+    switch int(math.Log10(float64(n))) + 1 {
+    case 5, 6:
         return fmt.Sprintf("%.0fk", float64(n)/float64(1000))
-    } else if n > 10000 {
-        return fmt.Sprintf("%.1fk", float64(n)/float64(1000))
+    case 7:
+        return fmt.Sprintf("%.1fM", float64(n)/float64(1000000))
+    case 8, 9:
+        return fmt.Sprintf("%.0fM", float64(n)/float64(1000000))
+    default:
+        return fmt.Sprintf("%d", n)
     }
-    return fmt.Sprintf("%d", n)
 }
 
+// Display the difference, with a +/- symbol and % sign
 func (this *CovidSlide) Diff(n1, n2 int) string {
     n1f := float64(n1)
     n2f := float64(n2)
     diff := ((n1f - n2f) / n2f) * 100
     if diff > 0 {
-        return fmt.Sprintf("+%0.1f", diff)
+        return fmt.Sprintf("+%0.1f%%", diff)
     } else {
-        return fmt.Sprintf("-%0.1f", diff)
+        return fmt.Sprintf("-%0.1f%%", diff)
     }
 }
 
@@ -141,14 +142,16 @@ func (this *CovidSlide) QueryForDate(d civil.Date) {
 
     maSum := 0
     usSum := 0
-    for i,row := range rows {
+    for i, row := range rows {
         // Skip header row
-        if i == 0 { continue; }
+        if i == 0 {
+            continue
+        }
 
         n, err := strconv.Atoi(row[7])
         if err != nil {
-            log.WithFields(log. Fields{
-                "row": row,
+            log.WithFields(log.Fields{
+                "row":   row,
                 "value": row[7],
                 "error": err,
             }).Warn("Error reading cases number from CSV")
