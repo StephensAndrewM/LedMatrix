@@ -73,7 +73,7 @@ func (this *CovidSlide) Draw(img *image.RGBA) {
 
     WriteString(img, "United States", w, ALIGN_LEFT, 1, 13)
     if n1, ok := this.UsCases[d1]; ok {
-        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 92, 13)
+        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 96, 13)
         if n2, ok := this.UsCases[d2]; ok {
             WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 126, 13)
         }
@@ -81,7 +81,7 @@ func (this *CovidSlide) Draw(img *image.RGBA) {
 
     WriteString(img, "Massachusetts", w, ALIGN_LEFT, 1, 22)
     if n1, ok := this.MaCases[d1]; ok {
-        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 92, 22)
+        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 96, 22)
         if n2, ok := this.MaCases[d2]; ok {
             WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 126, 22)
         }
@@ -103,15 +103,13 @@ func (this *CovidSlide) Format(n int) string {
     }
 }
 
-// Display the difference, with a +/- symbol and % sign
+// Display the difference with a +/- symbol
 func (this *CovidSlide) Diff(n1, n2 int) string {
-    n1f := float64(n1)
-    n2f := float64(n2)
-    diff := ((n1f - n2f) / n2f) * 100
-    if diff > 0 {
-        return fmt.Sprintf("+%0.1f%%", diff)
+	diff := this.Format(n1 - n2)
+    if (n1 - n2) > 0 {
+        return fmt.Sprintf("+%s", diff)
     } else {
-        return fmt.Sprintf("-%0.1f%%", diff)
+        return fmt.Sprintf("-%s", diff)
     }
 }
 
