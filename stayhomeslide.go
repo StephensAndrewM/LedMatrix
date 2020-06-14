@@ -8,6 +8,8 @@ import (
     "time"
 )
 
+var DISPLAY_TALLIES = false
+
 type StayHomeSlide struct {
 }
 
@@ -38,18 +40,54 @@ func (this *StayHomeSlide) IsEnabled() bool {
 }
 
 func (this *StayHomeSlide) Draw(img *image.RGBA) {
-    y := color.RGBA{255, 255, 0, 255}
-    r := color.RGBA{255, 0, 0, 255}
+    yellow := color.RGBA{255, 255, 0, 255}
+    red := color.RGBA{255, 0, 0, 255}
 
     start := time.Date(2020, time.March, 10, 0, 0, 0, 0, time.Local)
     diff := int(math.Ceil(time.Since(start).Hours()/24.0)) - 1
 
-    DrawIcon(img, "house-16", r, 8, 2)
-    DrawIcon(img, "house-16", r, (128-8-16), 2)
+    if DISPLAY_TALLIES {
 
-    DrawEmptyBox(img, y, 54, 1, 20, 13)
-    WriteString(img, fmt.Sprintf("%d", diff), y, ALIGN_CENTER, 64, 4)
+        for j := 0; j <= diff/50; j++ {
+            lineDiff := 50
+            if diff < ((j + 1) * 50) {
+                lineDiff = diff % 50
+            }
+            for i := 0; i <= lineDiff/5; i++ {
+                block := 5
+                if lineDiff < ((i + 1) * 5) {
+                    block = lineDiff % 5
+                }
+                x := (i * 13) + 1
+                y := j * 8
+                for t := 0; t < Min(block, 4); t++ {
+                    vertLineX := x + ((t * 2) + 1)
+                    DrawVertLine(img, yellow, y, y+6, vertLineX)
+                }
+                if block == 5 {
+                    DrawHorizLine(img, yellow, x, x+2, y+2)
+                    DrawHorizLine(img, yellow, x+2, x+6, y+3)
+                    DrawHorizLine(img, yellow, x+6, x+8, y+4)
+                }
+            }
+        }
 
-    WriteString(img, "DAYS SINCE", r, ALIGN_CENTER, 64, 16)
-    WriteString(img, "OFFICES CLOSED", r, ALIGN_CENTER, 64, 24)
+    } else {
+
+        DrawIcon(img, "house-16", red, 8, 2)
+        DrawIcon(img, "house-16", red, (128 - 8 - 16), 2)
+        DrawEmptyBox(img, yellow, 54, 1, 20, 13)
+        WriteString(img, fmt.Sprintf("%d", diff), yellow, ALIGN_CENTER, 64, 4)
+
+    }
+
+    WriteString(img, "DAYS SINCE", red, ALIGN_CENTER, 64, 16)
+    WriteString(img, "OFFICES CLOSED", red, ALIGN_CENTER, 64, 24)
+}
+
+func Min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
 }
