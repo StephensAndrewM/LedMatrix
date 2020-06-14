@@ -18,7 +18,9 @@ const (
 )
 
 func NewBlankImage() *image.RGBA {
-    return image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+    img := image.NewRGBA(image.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+    DrawBox(img, color.RGBA{0, 0, 0, 255}, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+    return img
 }
 
 func DrawEverySecond(d Display, drawFn func(*image.RGBA)) *time.Ticker {
@@ -26,6 +28,9 @@ func DrawEverySecond(d Display, drawFn func(*image.RGBA)) *time.Ticker {
 }
 
 func DrawEveryInterval(interval time.Duration, d Display, drawFn func(*image.RGBA)) *time.Ticker {
+    // First draw right now to avoid lag time
+    DrawOnce(d, drawFn)
+    // Then set up the period redraw
     t := time.NewTicker(interval)
     go func() {
         for range t.C {
@@ -105,14 +110,14 @@ func WriteGlyph(img *image.RGBA, g Glyph, c color.RGBA, x int, y int) {
 }
 
 func DrawIcon(img *image.RGBA, iconName string, c color.RGBA, x int, y int) {
-	icon := GetIcon(iconName)
-	for j, row := range icon.Layout {
+    icon := GetIcon(iconName)
+    for j, row := range icon.Layout {
         for i, val := range row {
             if val != 0 {
                 img.SetRGBA(x+int(i), y+int(j), c)
             }
         }
-    }	
+    }
 }
 
 func DrawBox(img *image.RGBA, c color.RGBA, x int, y int, width int, height int) {

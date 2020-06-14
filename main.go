@@ -12,8 +12,10 @@ type Config struct {
 }
 
 // Flags that are generally environment-dependent
+var runAsGeneratorFlag = flag.Bool("generate_images", false,
+    "If true, generates slide images instead of running as slideshow.")
 var useWebDisplayFlag = flag.Bool("use_web_display", false,
-    "If true, outputs to simulator instead of hardware.")
+    "If true, runs slideshow in browser instead of hardware.")
 var debugLogFlag = flag.Bool("debug_log", false,
     "If true, prints out debug-level log statements.")
 
@@ -29,9 +31,6 @@ func main() {
     // Init flags for use everywhere
     flag.Parse()
 
-    // Grab the global config object to pass elsewhere
-    config := GetConfig()
-
     // Set global settings for logging
     if *debugLogFlag {
         log.SetLevel(log.DebugLevel)
@@ -45,6 +44,17 @@ func main() {
     // Set up the glyph and icon mappings
     InitGlyphs()
     InitIcons()
+
+    if *runAsGeneratorFlag {
+        RunAsGenerator()
+    } else {
+        RunAsSlideshow()
+    }
+}
+
+func RunAsSlideshow() {
+    // Grab the global config object to pass elsewhere
+    config := GetConfig()
 
     // Set up the display - use hardware as default
     var d Display
@@ -62,4 +72,18 @@ func main() {
     // Start the HTTP show controller, which keeps the program running
     c := NewController(s)
     c.RunUntilShutdown()
+}
+
+func RunAsGenerator() {
+    config := GetConfig()
+
+    d := NewSaveToFileDisplay()
+
+    // For each slide, initialize then draw once
+    for _, s := range config.Slides {
+        d.SetSlideId(s)
+        s.Initialize()
+        s.StartDraw(d)
+        s.StopDraw()
+    }
 }

@@ -5,6 +5,6 @@ import (
 )
 
 type Display interface {
-	Initialize()
-	Redraw(img *image.RGBA)
+    Initialize()
+    Redraw(img *image.RGBA)
 }
