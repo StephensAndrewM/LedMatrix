@@ -7,10 +7,10 @@ import (
     log "github.com/sirupsen/logrus"
     "image"
     "image/color"
+    "math"
     "net/http"
     "strconv"
     "time"
-    "math"
 )
 
 type CovidSlide struct {
@@ -31,16 +31,14 @@ func NewCovidSlide() *CovidSlide {
     return this
 }
 
+// We only re-query on initialization since this data only updates once a day
 func (this *CovidSlide) Initialize() {
-    // We only re-query on initialization since this data only updates once a day
-    d1 := civil.DateOf(time.Now().AddDate(0, 0, -1))
-    d2 := civil.DateOf(time.Now().AddDate(0, 0, -2))
-
-    if _, d1Ok := this.UsCases[d1]; !d1Ok {
-        this.QueryForDate(d1)
-    }
-    if _, d2Ok := this.UsCases[d2]; !d2Ok {
-        this.QueryForDate(d2)
+    // Get data up to 15 days in the past
+    for i := -1; i >= -15; i-- {
+        d := civil.DateOf(time.Now().AddDate(0, 0, i))
+        if _, dOk := this.UsCases[d]; !dOk {
+            this.QueryForDate(d)
+        }
     }
 }
 
@@ -62,30 +60,46 @@ func (this *CovidSlide) IsEnabled() bool {
 }
 
 func (this *CovidSlide) Draw(img *image.RGBA) {
-    r := color.RGBA{255, 0, 0, 255}
-    y := color.RGBA{255, 255, 0, 255}
-    w := color.RGBA{255, 255, 255, 255}
+    red := color.RGBA{255, 0, 0, 255}
 
-    WriteString(img, "COVID-19 CASES", r, ALIGN_CENTER, 63, 2)
+    WriteString(img, "COVID-19 CASES", red, ALIGN_CENTER, 63, 2)
+
+    this.DrawForLocation(img, 13, "United States", this.UsCases)
+    this.DrawForLocation(img, 22, "Massachusetts", this.MaCases)
+}
+
+func (this *CovidSlide) DrawForLocation(img *image.RGBA, y int, label string, cases map[civil.Date]int) {
+    yellow := color.RGBA{255, 255, 0, 255}
+    white := color.RGBA{255, 255, 255, 255}
 
     d1 := civil.DateOf(time.Now().AddDate(0, 0, -1))
     d2 := civil.DateOf(time.Now().AddDate(0, 0, -2))
 
-    WriteString(img, "United States", w, ALIGN_LEFT, 1, 13)
-    if n1, ok := this.UsCases[d1]; ok {
-        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 96, 13)
-        if n2, ok := this.UsCases[d2]; ok {
-            WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 126, 13)
+    WriteString(img, label, white, ALIGN_LEFT, 1, y)
+    if n1, ok := cases[d1]; ok {
+        WriteString(img, this.Format(n1), yellow, ALIGN_RIGHT, 88, y)
+        if n2, ok := cases[d2]; ok {
+            WriteString(img, this.Diff(n1, n2), yellow, ALIGN_RIGHT, 110, y)
         }
     }
 
-    WriteString(img, "Massachusetts", w, ALIGN_LEFT, 1, 22)
-    if n1, ok := this.MaCases[d1]; ok {
-        WriteString(img, this.Format(n1), y, ALIGN_RIGHT, 96, 22)
-        if n2, ok := this.MaCases[d2]; ok {
-            WriteString(img, this.Diff(n1, n2), y, ALIGN_RIGHT, 126, 22)
+    var diffValues []float64
+    var diffMax float64
+    for i := -15; i < -1; i++ {
+        dA := civil.DateOf(time.Now().AddDate(0, 0, i))
+        dB := civil.DateOf(time.Now().AddDate(0, 0, i+1))
+        nA, okA := cases[dA]
+        nB, okB := cases[dB]
+        diff := float64(nB - nA)
+        if okA && okB {
+            diffValues = append(diffValues, diff)
+        }
+        if diffMax < diff {
+            diffMax = diff
         }
     }
+
+    DrawNormalizedGraph(img, 113, y+6, 7, 0, diffMax, yellow, diffValues)
 }
 
 // Limit to only displaying four glyphs max
@@ -105,7 +119,7 @@ func (this *CovidSlide) Format(n int) string {
 
 // Display the difference with a +/- symbol
 func (this *CovidSlide) Diff(n1, n2 int) string {
-	diff := this.Format(n1 - n2)
+    diff := this.Format(n1 - n2)
     if (n1 - n2) > 0 {
         return fmt.Sprintf("+%s", diff)
     } else {
