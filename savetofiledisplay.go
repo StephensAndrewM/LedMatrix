@@ -5,12 +5,14 @@ import (
     "github.com/fogleman/gg"
     log "github.com/sirupsen/logrus"
     "image"
+    "image/color"
     "reflect"
 )
 
-var DRAW_GRIDLINES = false
+var DRAW_GRIDLINES = true
 var RENDER_SCALE = 8
 var DOT_PADDING = 0.75
+var MIN_BRIGHTNESS = uint8(40)
 
 type SaveToFileDisplay struct {
     SlideId string
@@ -26,6 +28,7 @@ func (this *SaveToFileDisplay) Initialize() {
 }
 
 func (this *SaveToFileDisplay) Redraw(img *image.RGBA) {
+    // Define the height of the drawing canvas, in real pixels
     dcWidth := SCREEN_WIDTH * RENDER_SCALE
     dcHeight := SCREEN_HEIGHT * RENDER_SCALE
 
@@ -41,18 +44,29 @@ func (this *SaveToFileDisplay) Redraw(img *image.RGBA) {
                 (float64(i)+0.5)*float64(RENDER_SCALE),
                 (float64(j)+0.5)*float64(RENDER_SCALE),
                 (float64(RENDER_SCALE)*DOT_PADDING)/2)
-            dc.SetColor(img.RGBAAt(i, j))
+            dc.SetColor(this.FloorColor(img.RGBAAt(i, j)))
             dc.Fill()
         }
     }
 
-    // Draw gridlines
     if DRAW_GRIDLINES {
         dc.SetRGB(0, 1.0, 1.0)
+
+        // Draw major center lines
         dc.SetLineWidth(2.0)
         dc.DrawLine(0, float64(dcHeight)/2.0, float64(dcWidth), float64(dcHeight)/2.0)
-        dc.Stroke()
         dc.DrawLine(float64(dcWidth)/2.0, 0, float64(dcWidth)/2.0, float64(dcHeight))
+
+        // Draw minor 8-dot grid lines
+        dc.SetLineWidth(0.5)
+        for j := 8; j < SCREEN_HEIGHT; j += 8 {
+            dc.DrawLine(0, float64(j*RENDER_SCALE), float64(dcWidth), float64(j*RENDER_SCALE))
+        }
+        for i := 8; i < SCREEN_WIDTH; i += 8 {
+            dc.DrawLine(float64(i*RENDER_SCALE), 0, float64(i*RENDER_SCALE), float64(dcHeight))
+        }
+
+        // Put the lines on the canvas
         dc.Stroke()
     }
 
@@ -69,4 +83,19 @@ func (this *SaveToFileDisplay) Redraw(img *image.RGBA) {
 
 func (this *SaveToFileDisplay) SetSlideId(s Slide) {
     this.SlideId = reflect.TypeOf(s).Elem().Name()
+}
+
+// Set a minimum (gray) RGB value if none is provided
+func (this *SaveToFileDisplay) FloorColor(c color.RGBA) color.RGBA {
+    r := this.Max(c.R, MIN_BRIGHTNESS)
+    g := this.Max(c.G, MIN_BRIGHTNESS)
+    b := this.Max(c.B, MIN_BRIGHTNESS)
+    return color.RGBA{r, g, b, c.A}
+}
+
+func (this *SaveToFileDisplay) Max(a, b uint8) uint8 {
+    if a > b {
+        return a
+    }
+    return b
 }

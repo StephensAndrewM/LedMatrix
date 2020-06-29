@@ -1,15 +1,14 @@
 package main
 
 import (
+    "fmt"
     "image"
     "image/color"
     "math"
     "time"
-    "fmt"
 )
 
 type CountdownSlide struct {
-
 }
 
 func NewCountdownSlide() *CountdownSlide {
@@ -18,7 +17,7 @@ func NewCountdownSlide() *CountdownSlide {
 }
 
 func (this *CountdownSlide) Initialize() {
-    
+
 }
 
 func (this *CountdownSlide) Terminate() {
@@ -39,14 +38,14 @@ func (this *CountdownSlide) IsEnabled() bool {
 
 func (this *CountdownSlide) Draw(img *image.RGBA) {
     jobDate := time.Date(2020, time.July, 17, 0, 0, 0, 0, time.Local)
-    this.DrawCountdownLine(img, jobDate, "LYUBA'S LAST DAY", color.RGBA{255,0,255,255}, 6)
-    
+    this.DrawCountdownLine(img, jobDate, "LYUBA'S LAST DAY", color.RGBA{255, 0, 255, 255}, 6)
+
     moveDate := time.Date(2020, time.August, 15, 0, 0, 0, 0, time.Local)
-    this.DrawCountdownLine(img, moveDate, "NEW APARTMENT", color.RGBA{0,255,0,255}, 18)
+    this.DrawCountdownLine(img, moveDate, "NEW APARTMENT", color.RGBA{0, 255, 0, 255}, 19)
 }
 
 func (this *CountdownSlide) DrawCountdownLine(img *image.RGBA, d time.Time, event string, c color.RGBA, y int) {
-    numberColor := color.RGBA{255,255,255,255}
+    numberColor := color.RGBA{255, 255, 255, 255}
 
     WriteString(img, fmt.Sprintf("%d", this.DaysUntil(d)), numberColor, ALIGN_RIGHT, 20, y)
     WriteString(img, event, c, ALIGN_LEFT, 26, y)
