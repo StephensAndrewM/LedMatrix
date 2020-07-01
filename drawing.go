@@ -56,7 +56,10 @@ func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment
         return
     }
 
-    glyphs := make([]Glyph, len(str))
+    // This needs to be dynamic-length even though we know the length of str
+    // because of how Go handles unicode - length isn't the same as number of
+    // characters that we'll get when we iterate through the string.
+    var glyphs []Glyph
     width := 0
     for i, char := range str {
         g := GetGlyph(char)
@@ -65,7 +68,7 @@ func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment
         if max > 0 && width > max {
             break
         }
-        glyphs[i] = g
+        glyphs = append(glyphs, g)
     }
     // Remove the kerning on the last letter
     width--
@@ -222,6 +225,8 @@ func DrawAutoNormalizedGraph(img *image.RGBA, x, y, h int, c color.RGBA, data []
             max = val
         }
     }
+    // Decrease the min by 1 so that some pixels will always be drawn
+    min--
     DrawNormalizedGraph(img, x, y, h, min, max, c, data)
 }
 
@@ -229,7 +234,7 @@ func DrawNormalizedGraph(img *image.RGBA, x, y, h int, min, max float64, c color
     dataRange := max - min
     var normalized []int
     for _, val := range data {
-        normVal := int(Round(((val - min) / dataRange) * float64(h)))
+        normVal := int(math.Ceil(((val - min) / dataRange) * float64(h)))
         normalized = append(normalized, normVal)
         // fmt.Printf("%.2f --> %d [%.2f, %.2f]\n", val, normVal, min, max)
     }
@@ -239,14 +244,4 @@ func DrawNormalizedGraph(img *image.RGBA, x, y, h int, min, max float64, c color
             DrawVertLine(img, c, y-val+1, y, x+i)
         }
     }
-}
-
-// This is needed for compatibility with Go 1.9
-// What kind of language doesn't implement this???
-func Round(x float64) float64 {
-    t := math.Trunc(x)
-    if math.Abs(x-t) >= 0.5 {
-        return t + math.Copysign(1, x)
-    }
-    return t
 }
