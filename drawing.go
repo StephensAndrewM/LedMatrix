@@ -61,7 +61,7 @@ func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment
     // characters that we'll get when we iterate through the string.
     var glyphs []Glyph
     width := 0
-    for i, char := range str {
+    for _, char := range str {
         g := GetGlyph(char)
         width += g.Width + 1
         // If we exceed how much the box can hold, stop
