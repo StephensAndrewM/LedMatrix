@@ -19,6 +19,7 @@ import (
 var HISTORICAL_COVID_DAYS = 29
 
 type CovidSlide struct {
+    FetchTicker *time.Ticker
     // Store historically retrieved data
     UsCases map[civil.Date]int
     MaCases map[civil.Date]int
@@ -38,22 +39,21 @@ func NewCovidSlide() *CovidSlide {
     return this
 }
 
-// We only re-query on initialization since this data only updates once a day
 func (this *CovidSlide) Initialize() {
-    // Get data up to 15 days in the past
-    for i := 1; i <= HISTORICAL_COVID_DAYS; i++ {
-        d := civil.DateOf(time.Now().AddDate(0, 0, -i))
-        // Check if fetch was successful based on data presence
-        _, dOk := this.UsCases[d]
-        // Refresh if data is 1 or 2 days old, since it might not be stable
-        if !dOk || i < 3 {
-            this.QueryForDate(d)
+    // Query for new data once immediately
+    this.FetchData()
+
+    // Set up a period re-fetch of the data since it's sometimes late
+    this.FetchTicker = time.NewTicker(4 * time.Hour)
+    go func() {
+        for range this.FetchTicker.C {
+            this.FetchData()
         }
-    }
+    }()
 }
 
 func (this *CovidSlide) Terminate() {
-
+    this.FetchTicker.Stop()
 }
 
 func (this *CovidSlide) StartDraw(d Display) {
@@ -82,16 +82,24 @@ func (this *CovidSlide) Draw(img *image.RGBA) {
 func (this *CovidSlide) DrawForLocation(img *image.RGBA, y int, label string, cases map[civil.Date]int) {
     yellow := color.RGBA{255, 255, 0, 255}
     white := color.RGBA{255, 255, 255, 255}
+    gray := color.RGBA{128, 128, 128, 255}
 
     d1 := civil.DateOf(time.Now().AddDate(0, 0, -1))
     d2 := civil.DateOf(time.Now().AddDate(0, 0, -2))
 
     WriteString(img, label, white, ALIGN_LEFT, 1, y)
-    if n1, ok := cases[d1]; ok {
+    if n1, ok := cases[d1]; ok && n1 > 0 {
+        // First display total number of cases
         WriteString(img, this.Format(n1), yellow, ALIGN_RIGHT, 63, y)
-        if n2, ok := cases[d2]; ok {
-            WriteString(img, this.Diff(n1, n2), yellow, ALIGN_RIGHT, 94, y)
+
+        // Then calculate and display the diff
+        if n2, ok := cases[d2]; ok && (n1-n2) > 0 {
+            WriteString(img, this.Format(n1-n2), yellow, ALIGN_RIGHT, 94, y)
+        } else {
+            WriteString(img, "?", gray, ALIGN_RIGHT, 94, y)
         }
+    } else {
+        WriteString(img, "?", gray, ALIGN_RIGHT, 63, y)
     }
 
     var diffValues []float64
@@ -130,19 +138,33 @@ func (this *CovidSlide) Format(n int) string {
     }
 }
 
-// Display the difference with a +/- symbol
-func (this *CovidSlide) Diff(n1, n2 int) string {
-    diff := this.Format(n1 - n2)
-    if (n1 - n2) > 0 {
-        return fmt.Sprintf("+%s", diff)
-    } else {
-        return fmt.Sprintf("-%s", diff)
+func (this *CovidSlide) FetchData() {
+    attempted := 0
+    successful := 0
+
+    // Get data up to 15 days in the past
+    for i := 1; i <= HISTORICAL_COVID_DAYS; i++ {
+        d := civil.DateOf(time.Now().AddDate(0, 0, -i))
+        // Check if fetch was successful based on data presence
+        _, dOk := this.UsCases[d]
+        // Refresh if data is 1 or 2 days old, since it might not be stable
+        if !dOk || i < 3 {
+            attempted++
+            if this.QueryForDate(d) {
+                successful++
+            }
+        }
     }
+
+    log.WithFields(log.Fields{
+        "attempted":  attempted,
+        "successful": successful,
+    }).Info("Fetched latest Covid data.")
 }
 
 // Can't use HttpHelper since the data doesn't change frequently
 // and we need to do many queries to draw the slide.
-func (this *CovidSlide) QueryForDate(d civil.Date) {
+func (this *CovidSlide) QueryForDate(d civil.Date) bool {
     url := fmt.Sprintf("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/%02d-%02d-%04d.csv",
         d.Month, d.Day, d.Year)
 
@@ -152,7 +174,7 @@ func (this *CovidSlide) QueryForDate(d civil.Date) {
             "url":   url,
             "error": err,
         }).Warn("Response error in Covid query.")
-        return
+        return false
     }
 
     r := csv.NewReader(res.Body)
@@ -162,7 +184,7 @@ func (this *CovidSlide) QueryForDate(d civil.Date) {
             "url":   url,
             "error": err,
         }).Warn("Parse error in Covid data.")
-        return
+        return false
     }
 
     usSum := 0
@@ -193,7 +215,15 @@ func (this *CovidSlide) QueryForDate(d civil.Date) {
         }
     }
 
-    this.UsCases[d] = usSum
-    this.MaCases[d] = maSum
-    this.AzCases[d] = azSum
+    // We know that there are some cases so a 0 value indicates an error
+    if usSum > 0 {
+        this.UsCases[d] = usSum
+    }
+    if maSum > 0 {
+        this.MaCases[d] = maSum
+    }
+    if azSum > 0 {
+        this.AzCases[d] = azSum
+    }
+    return true
 }
