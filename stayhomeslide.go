@@ -74,9 +74,12 @@ func (this *StayHomeSlide) Draw(img *image.RGBA) {
 
     } else {
 
-        DrawIcon(img, "house-16", red, 8, 2)
-        DrawIcon(img, "house-16", red, (128 - 8 - 16), 2)
-        DrawEmptyBox(img, yellow, 54, 1, 20, 13)
+        DrawIcon(img, "house-16", red, 8, 1)
+        DrawIcon(img, "house-16", red, (128 - 8 - 16), 1)
+        
+        // Draw the number and box centered on the slide
+        width := GetDisplayWidth(fmt.Sprintf("%d", diff)) + 7
+        DrawEmptyBox(img, yellow, 64 - (width/2), 1, width, 13)
         WriteString(img, fmt.Sprintf("%d", diff), yellow, ALIGN_CENTER, 64, 4)
 
     }

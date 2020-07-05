@@ -94,7 +94,7 @@ func (this *CovidSlide) DrawForLocation(img *image.RGBA, y int, label string, ca
 
         // Then calculate and display the diff
         if n2, ok := cases[d2]; ok && (n1-n2) > 0 {
-            WriteString(img, this.Format(n1-n2), yellow, ALIGN_RIGHT, 94, y)
+            WriteString(img, "+"+this.Format(n1-n2), yellow, ALIGN_RIGHT, 94, y)
         } else {
             WriteString(img, "?", gray, ALIGN_RIGHT, 94, y)
         }
