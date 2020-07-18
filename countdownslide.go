@@ -4,16 +4,18 @@ import (
     "fmt"
     "image"
     "image/color"
-    "math"
     "time"
+    "cloud.google.com/go/civil"
 )
 
 type CountdownSlide struct {
+    events []CountdownEvent
 }
 
-func NewCountdownSlide() *CountdownSlide {
-    sl := new(CountdownSlide)
-    return sl
+func NewCountdownSlide(events []CountdownEvent) *CountdownSlide {
+    this := new(CountdownSlide)
+    this.events = events
+    return this
 }
 
 func (this *CountdownSlide) Initialize() {
@@ -37,24 +39,43 @@ func (this *CountdownSlide) IsEnabled() bool {
 }
 
 func (this *CountdownSlide) Draw(img *image.RGBA) {
-    jobDate := time.Date(2020, time.July, 17, 0, 0, 0, 0, time.Local)
-    this.DrawCountdownLine(img, jobDate, "LYUBA'S LAST DAY", color.RGBA{255, 0, 255, 255}, 6)
-
-    moveDate := time.Date(2020, time.August, 15, 0, 0, 0, 0, time.Local)
-    this.DrawCountdownLine(img, moveDate, "NEW APARTMENT", color.RGBA{0, 255, 0, 255}, 19)
-}
-
-func (this *CountdownSlide) DrawCountdownLine(img *image.RGBA, d time.Time, event string, c color.RGBA, y int) {
-    numberColor := color.RGBA{255, 255, 255, 255}
-
-    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(d)), numberColor, ALIGN_RIGHT, 20, y)
-    WriteString(img, event, c, ALIGN_LEFT, 26, y)
-}
-
-func (this *CountdownSlide) DaysUntil(d time.Time) int {
-    diff := time.Until(d).Hours() / 24.0
-    if diff < 0 {
-        return 0
+    today := civil.DateOf(time.Now())
+    var filteredEvents []CountdownEvent
+    for _,event := range(this.events) {
+        if event.date.Before(today) {
+            continue;
+        }
+        filteredEvents = append(filteredEvents, event)
     }
-    return int(math.Ceil(diff))
+
+    // Hardcoded y values for each line that provide reasonable spacing
+    var yVals []int
+    switch len(filteredEvents) {
+    case 1:
+        yVals = []int{13}
+    case 2:
+        yVals = []int{6,19}
+    case 3:
+        yVals = []int{3, 13, 23}
+    default:
+        yVals = []int{0,8,16,24}
+    }
+
+    numberColor := color.RGBA{255, 255, 255, 255}
+    for i,event := range(filteredEvents) {
+        y := yVals[i]
+        WriteString(img, fmt.Sprintf("%d", event.date.DaysSince(today)), numberColor, ALIGN_RIGHT, 20, y)
+        WriteString(img, event.label, event.color, ALIGN_LEFT, 26, y)
+
+        // We don't have room to display more than 4 events, so stop
+        if i >= 3 {
+            break
+        }
+    }
+}
+
+type CountdownEvent struct {
+    date civil.Date
+    label string
+    color color.RGBA
 }
