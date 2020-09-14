@@ -27,6 +27,7 @@ type MbtaSlide struct {
 // This is not an exhaustive list, just some easy ones
 const MBTA_STATION_ID_DAVIS = "place-davis"
 const MBTA_STATION_ID_PARK = "place-pktrm"
+const MBTA_STATION_ID_KENDALL = "place-knncl"
 const MBTA_STATION_ID_MGH = "place-chmnl"
 const MBTA_STATION_ID_GOVCTR = "place-gover"
 const MBTA_STATION_ID_HARVARD = "place-harsq"
@@ -34,6 +35,7 @@ const MBTA_STATION_ID_HARVARD = "place-harsq"
 var MBTA_STATION_NAME_MAP = map[string]string{
     MBTA_STATION_ID_DAVIS:   "DAVIS SQUARE",
     MBTA_STATION_ID_PARK:    "PARK STREET",
+    MBTA_STATION_ID_KENDALL: "KENDALL SQUARE",
     MBTA_STATION_ID_MGH:     "CHARLES/MGH",
     MBTA_STATION_ID_GOVCTR:  "GOVERNMENT CENTER",
     MBTA_STATION_ID_HARVARD: "HARVARD SQUARE",
