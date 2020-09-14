@@ -4,6 +4,7 @@ import (
     log "github.com/sirupsen/logrus"
     "net/http"
     "time"
+    "os/exec"
 )
 
 type Slideshow struct {
@@ -71,6 +72,9 @@ func (this *Slideshow) WaitForReadiness() {
     // Don't initialize until internet is available
     WaitForConnection()
 
+    // Attempt to update time before displaying anything calculated
+    SyncTime()
+
     // Initialize all slides (attempt fetching initial content)
     // This call on each slide blocks until request is complete
     for _, s := range this.Slides {
@@ -104,6 +108,17 @@ func WaitForConnection() {
         }
         time.Sleep(1 * time.Second)
         c++
+    }
+}
+
+// Synchronizes with a NTP server, in case Pi lost power for a while
+func SyncTime() {
+    cmd := exec.Command("/usr/sbin/ntpdate", "-s", "time.google.com")
+    err := cmd.Run()
+    if err != nil {
+        log.WithFields(log.Fields{
+            "error": err,
+        }).Warning("Failed NTP time synchronization.")
     }
 }
 
