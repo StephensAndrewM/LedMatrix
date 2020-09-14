@@ -12,10 +12,8 @@ type Config struct {
 }
 
 // Flags that are generally environment-dependent
-var runAsGeneratorFlag = flag.Bool("generate_images", false,
+var generateImagesFlag = flag.Bool("generate_images", false,
     "If true, generates slide images instead of running as slideshow.")
-var useWebDisplayFlag = flag.Bool("use_web_display", false,
-    "If true, runs slideshow in browser instead of hardware.")
 var debugLogFlag = flag.Bool("debug_log", false,
     "If true, prints out debug-level log statements.")
 
@@ -45,8 +43,8 @@ func main() {
     InitGlyphs()
     InitIcons()
 
-    if *runAsGeneratorFlag {
-        RunAsGenerator()
+    if *generateImagesFlag {
+        GenerateImages()
     } else {
         RunAsSlideshow()
     }
@@ -56,13 +54,8 @@ func RunAsSlideshow() {
     // Grab the global config object to pass elsewhere
     config := GetConfig()
 
-    // Set up the display - use hardware as default
-    var d Display
-    if *useWebDisplayFlag {
-        d = NewWebDisplay()
-    } else {
-        d = NewLedDisplay()
-    }
+    // Set up the display on hardware
+    d := NewLedDisplay()
     d.Initialize()
 
     // Set up the slideshow (controls drawing and advancing)
@@ -74,7 +67,7 @@ func RunAsSlideshow() {
     c.RunUntilShutdown()
 }
 
-func RunAsGenerator() {
+func GenerateImages() {
     config := GetConfig()
 
     d := NewSaveToFileDisplay()

@@ -35,7 +35,6 @@ func (this *WelcomeSlide) IsEnabled() bool {
 
 func (this *WelcomeSlide) Draw(img *image.RGBA) {
     midpoint := GetLeftOfCenterX(img)
-    WriteString(img, "HELLO!", color.RGBA{255, 255, 255, 255}, ALIGN_CENTER, midpoint, 2)
-    WriteString(img, "Andrew's Led Matrix", color.RGBA{0, 255, 255, 255}, ALIGN_CENTER, midpoint, 15)
-    WriteString(img, "v_2.0", color.RGBA{0, 255, 0, 255}, ALIGN_CENTER, midpoint, 23)
+    WriteString(img, "HELLO!", color.RGBA{255, 255, 0, 255}, ALIGN_CENTER, midpoint, 2)
+    WriteString(img, "Andrew's Led Matrix", color.RGBA{0, 255, 255, 255}, ALIGN_CENTER, midpoint, 16)
 }
