@@ -18,11 +18,26 @@ import (
 type WeatherSlide struct {
     LatLng     string
 
-    Weather      WeatherApiResponse
+    // Weather      WeatherApiResponse
+    Weather WeatherData
     WeatherIcons map[string]*image.RGBA
 
     HttpHelper *HttpHelper
     RedrawTicker *time.Ticker
+}
+
+type WeatherData struct {
+    CurrentTemp float64
+    CurrentIcon *image.RGBA
+
+    ForecastWeekday time.Weekday
+    ForecastIcon *image.RGBA
+    ForecastHighTemp int
+    ForecastLowTemp int
+
+    TimeGraphValues []time.Time
+    TempGraphValues []float64
+    PrecipGraphValues []float64
 }
 
 var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
@@ -139,7 +154,45 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
         return false
     }
 
-    this.Weather = respData
+    var weather WeatherData
+
+    // Convert data on current conditions
+    weather.CurrentTemp = respData.Current.Temperature;
+    currentIcon, currentIconExists := this.WeatherIcons[respData.Current.Icon]
+    if currentIconExists {
+        weather.CurrentIcon = currentIcon
+    } else {
+        log.WithFields(log.Fields{
+            "icon": respData.Current.Icon,
+        }).Warn("Missing icon for current.")
+    }
+
+    // Convert data on today's/tomorrow's forecast
+    forecastFromApi := respData.Daily.Data[0]
+    if (time.Now().Hour() > 12) {
+        forecastFromApi = respData.Daily.Data[1]
+    }
+    weather.ForecastWeekday = time.Unix(forecastFromApi.Time, 0).Weekday()
+    forecastIcon, forecastIconExists := this.WeatherIcons[forecastFromApi.Icon]
+    if forecastIconExists {
+        weather.ForecastIcon = forecastIcon
+    } else {
+        log.WithFields(log.Fields{
+            "icon": forecastFromApi.Icon,
+        }).Warn("Missing icon for forecast.")
+    }
+    weather.ForecastHighTemp = int(forecastFromApi.High)
+    weather.ForecastLowTemp = int(forecastFromApi.Low)
+
+    // Convert data on hourly temperature/precipitation forecast
+    for _, val := range respData.Hourly.Data[:48] {
+        weather.TimeGraphValues = append(weather.TimeGraphValues, time.Unix(val.Time, 0))
+        weather.TempGraphValues = append(weather.TempGraphValues, val.Temperature)
+        weather.PrecipGraphValues = append(weather.PrecipGraphValues, val.PrecipProbability)
+    }
+
+    this.Weather = weather;
+
     return true
 }
 
@@ -152,81 +205,48 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
 
     white := color.RGBA{255, 255, 255, 255}
 
-    WriteString(img, "NOW", white, ALIGN_CENTER, WEATHER_COL_CENTER, 0)
-    currentIcon, currentIconExists := this.WeatherIcons[this.Weather.Current.Icon]
-    if currentIconExists {
-        iconLeftX := WEATHER_COL_CENTER - (WEATHER_ICON_WIDTH / 2)
-        DrawImageWithColorTransform(img, currentIcon, iconLeftX, 7, white)
-    } else {
-        log.WithFields(log.Fields{
-            "icon": this.Weather.Current.Icon,
-        }).Warn("Missing icon for weather condition.")
+    WriteString(img, "NOW", white, ALIGN_CENTER, 16, 0)
+    if this.Weather.CurrentIcon != nil {
+        DrawImageWithColorTransform(img, this.Weather.CurrentIcon, 8, 7, white)
     }
-    WriteString(img, fmt.Sprintf("%.1f°", this.Weather.Current.Temperature), white, ALIGN_CENTER, WEATHER_COL_CENTER, 24)
+    WriteString(img, fmt.Sprintf("%.1f°", this.Weather.CurrentTemp), white, ALIGN_CENTER, 16, 24)
 
-    // If afternoon, offset forecasts by one day (don't show today)
-    forecastOffset := 0
-    if time.Now().Hour() > 12 {
-        forecastOffset = forecastOffset + 1
+    forecastOriginX := 33
+
+    aqua := color.RGBA{0, 255, 255, 255}
+    label := strings.ToUpper(this.Weather.ForecastWeekday.String()[0:3])
+    WriteString(img, label, aqua, ALIGN_CENTER, forecastOriginX+16, 0)
+    if this.Weather.ForecastIcon != nil {
+        DrawImageWithColorTransform(img, this.Weather.ForecastIcon, forecastOriginX+8, 7, aqua)
     }
+    forecastTemp := fmt.Sprintf("%d°/%d°", this.Weather.ForecastHighTemp, this.Weather.ForecastLowTemp)
+    WriteString(img, forecastTemp, aqua, ALIGN_CENTER, forecastOriginX+16, 24)
 
-    this.DrawForecast(img, WEATHER_COL_WIDTH, this.Weather.Daily.Data[forecastOffset+0])
-
-    this.DrawTemperatureGraph(img)
-    this.DrawPrecipitationGraph(img)
-}
-
-func (this *WeatherSlide) DrawTemperatureGraph(img *image.RGBA) {
-    white := color.RGBA{255, 255, 255, 255}
-    originX := 80
-    originY := 12
-    height := 10
-    width := 48
+    graphOriginX := 80
+    graphHeight := 10
+    graphWidth := 48
 
     // Thermometer symbol
-    WriteString(img, "🌡", white, ALIGN_LEFT, originX-8, originY-8)
-
-    var timeValues []int64
-    var dataPoints []float64
-    for _, val := range this.Weather.Hourly.Data[:48] {
-        timeValues = append(timeValues, val.Time)
-        dataPoints = append(dataPoints, val.Temperature)
-    }
-
-    DrawAutoNormalizedGraph(img, originX, originY-1, height, white, dataPoints)
-    this.DrawTimeAxes(img, originX, originY, width, height, timeValues)
-}
-
-func (this *WeatherSlide) DrawPrecipitationGraph(img *image.RGBA) {
-    white := color.RGBA{255, 255, 255, 255}
-    originX := 80
-    originY := 28
-    height := 10
-    width := 48
+    tempGraphOriginY := 12
+    WriteString(img, "🌡", white, ALIGN_LEFT, graphOriginX-6, tempGraphOriginY-8)
+    DrawAutoNormalizedGraph(img, graphOriginX, tempGraphOriginY-1, graphHeight, white, this.Weather.TempGraphValues)
+    this.DrawTimeAxes(img, graphOriginX, tempGraphOriginY, graphWidth, graphHeight, this.Weather.TimeGraphValues)
 
     // Raindrop symbol
-    WriteString(img, "💧", white, ALIGN_LEFT, originX-8, originY-8)
-
-    var timeValues []int64
-    var dataPoints []float64
-    for _, val := range this.Weather.Hourly.Data[:48] {
-        timeValues = append(timeValues, val.Time)
-        dataPoints = append(dataPoints, val.PrecipProbability)
-    }
-
-    DrawNormalizedGraph(img, originX, originY-1, height, 0.0, 1.0, white, dataPoints)
-    this.DrawTimeAxes(img, originX, originY, width, height, timeValues)
+    rainGraphOriginY := 28
+    WriteString(img, "💧", white, ALIGN_LEFT, graphOriginX-6, rainGraphOriginY-8)
+    DrawNormalizedGraph(img, graphOriginX, rainGraphOriginY-1, graphHeight, 0.0, 1.0, white, this.Weather.PrecipGraphValues)
+    this.DrawTimeAxes(img, graphOriginX, rainGraphOriginY, graphWidth, graphHeight, this.Weather.TimeGraphValues)
 }
 
-func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width, height int, timeValues []int64) {
+func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width, height int, timeValues []time.Time) {
     yellow := color.RGBA{255, 255, 0, 255}
 
     DrawVertLine(img, yellow, originY-height, originY, originX-1)
-    DrawHorizLine(img, yellow, originX, originX+width, originY)
+    DrawHorizLine(img, yellow, originX, originX+width-1, originY)
 
     // Draw emphasis on noon/midnight
-    for i, val := range timeValues {
-        t := time.Unix(val, 0)
+    for i, t := range timeValues {
         if t.Hour() == 0 {
             DrawVertLine(img, yellow, originY, originY+2, originX+i)
         }
@@ -234,26 +254,6 @@ func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width,
             DrawVertLine(img, yellow, originY, originY+1, originX+i)
         }
     }
-}
-
-func (this *WeatherSlide) DrawForecast(img *image.RGBA, offsetX int, forecast WeatherApiDailyForecastData) {
-    aqua := color.RGBA{0, 255, 255, 255}
-
-    label := strings.ToUpper(time.Unix(forecast.Time, 0).Weekday().String()[0:3])
-    WriteString(img, label, aqua, ALIGN_CENTER, offsetX+WEATHER_COL_CENTER, 0)
-
-    icon, iconExists := this.WeatherIcons[forecast.Icon]
-    if iconExists {
-        iconLeftX := offsetX + (WEATHER_COL_CENTER - (WEATHER_ICON_WIDTH / 2))
-        DrawImageWithColorTransform(img, icon, iconLeftX, 7, aqua)
-    } else {
-        log.WithFields(log.Fields{
-            "icon": this.Weather.Current.Icon,
-        }).Warn("Missing icon for weather condition.")
-    }
-
-    temp := fmt.Sprintf("%d°/%d°", int(forecast.High), int(forecast.Low))
-    WriteString(img, temp, aqua, ALIGN_CENTER, offsetX+WEATHER_COL_CENTER, 24)
 }
 
 // Data structures used by the Weather Underground API
