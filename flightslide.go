@@ -7,8 +7,8 @@ import (
     log "github.com/sirupsen/logrus"
     "image"
     "image/color"
-    "time"
     "net/http"
+    "time"
 )
 
 type FlightSlide struct {
@@ -29,7 +29,12 @@ type FlightAndDay struct {
 
 func NewFlightSlide(flights map[string]string) *FlightSlide {
     this := new(FlightSlide)
-    this.HttpHelper = NewHttpHelper(this)
+    this.HttpHelper = NewHttpHelper(HttpConfig{
+        SlideId:            "FlightSlide",
+        RefreshInterval:    10 * time.Minute,
+        RequestUrlCallback: this.BuildRequest,
+        ParseCallback:      this.Parse,
+    })
 
     // Copy the flights from the input into a struct (to be used later)
     // Expected input is date (e.g. "2020-01-15") to flight (e.g AA 1234).
@@ -98,20 +103,16 @@ func (this *FlightSlide) IsEnabled() bool {
     return ok
 }
 
-func (this *FlightSlide) GetRefreshInterval() time.Duration {
-    return 10 * time.Minute
-}
-
 func (this *FlightSlide) BuildRequest() (*http.Request, error) {
     url := fmt.Sprintf(
         "http://flightxml.flightaware.com/json/FlightXML3/FlightInfoStatus?ident=%s&howMany=5",
         this.ActiveFlight.Id)
-     req,err := http.NewRequest("GET", url, nil)
-     if err != nil {
-       return nil,err
-     }
-     req.SetBasicAuth(FLIGHTAWARE_USERNAME, FLIGHTAWARE_API_KEY)
-     return req,nil
+    req, err := http.NewRequest("GET", url, nil)
+    if err != nil {
+        return nil, err
+    }
+    req.SetBasicAuth(FLIGHTAWARE_USERNAME, FLIGHTAWARE_API_KEY)
+    return req, nil
 }
 
 func (this *FlightSlide) Parse(respBytes []byte) bool {
@@ -120,7 +121,7 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
     if jsonErr != nil {
         log.WithFields(log.Fields{
             "error": jsonErr,
-            "data": string(respBytes),
+            "data":  string(respBytes),
         }).Warn("Could not interpret flights JSON.")
         return false
     }

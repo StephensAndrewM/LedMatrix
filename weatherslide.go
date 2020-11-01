@@ -12,17 +12,13 @@ import (
     "os"
     "strings"
     "time"
-    "net/http"
 )
 
 type WeatherSlide struct {
-    LatLng     string
-
-    // Weather      WeatherApiResponse
-    Weather WeatherData
+    Weather      WeatherData
     WeatherIcons map[string]*image.RGBA
 
-    HttpHelper *HttpHelper
+    HttpHelper   *HttpHelper
     RedrawTicker *time.Ticker
 }
 
@@ -30,13 +26,13 @@ type WeatherData struct {
     CurrentTemp float64
     CurrentIcon *image.RGBA
 
-    ForecastWeekday time.Weekday
-    ForecastIcon *image.RGBA
+    ForecastWeekday  time.Weekday
+    ForecastIcon     *image.RGBA
     ForecastHighTemp int
-    ForecastLowTemp int
+    ForecastLowTemp  int
 
-    TimeGraphValues []time.Time
-    TempGraphValues []float64
+    TimeGraphValues   []time.Time
+    TempGraphValues   []float64
     PrecipGraphValues []float64
 }
 
@@ -66,8 +62,13 @@ var WEATHER_API_ICON_MAP = map[string]string{
 
 func NewWeatherSlide(latLng string) *WeatherSlide {
     this := new(WeatherSlide)
-    this.LatLng = latLng
-    this.HttpHelper = NewHttpHelper(this)
+    this.HttpHelper = NewHttpHelper(HttpConfig{
+        SlideId:         "WeatherSlide",
+        RefreshInterval: 2 * time.Minute,
+        RequestUrl: fmt.Sprintf("https://api.darksky.net/forecast/%s/%s",
+            WEATHER_API_KEY, latLng),
+        ParseCallback: this.Parse,
+    })
 
     // Preload all the weather icons
     this.WeatherIcons = make(map[string]*image.RGBA)
@@ -123,17 +124,6 @@ func (this *WeatherSlide) IsEnabled() bool {
     return true // Always enabled
 }
 
-func (this *WeatherSlide) GetRefreshInterval() time.Duration {
-    return 2 * time.Minute
-}
-
-func (this *WeatherSlide) BuildRequest() (*http.Request, error) {
-    url := fmt.Sprintf("https://api.darksky.net/forecast/%s/%s",
-        WEATHER_API_KEY, this.LatLng)
-
-    return http.NewRequest("GET", url, nil)
-}
-
 func (this *WeatherSlide) Parse(respBytes []byte) bool {
     // Parse response to JSON
     var respData WeatherApiResponse
@@ -157,7 +147,7 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
     var weather WeatherData
 
     // Convert data on current conditions
-    weather.CurrentTemp = respData.Current.Temperature;
+    weather.CurrentTemp = respData.Current.Temperature
     currentIcon, currentIconExists := this.WeatherIcons[respData.Current.Icon]
     if currentIconExists {
         weather.CurrentIcon = currentIcon
@@ -169,7 +159,7 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
 
     // Convert data on today's/tomorrow's forecast
     forecastFromApi := respData.Daily.Data[0]
-    if (time.Now().Hour() > 12) {
+    if time.Now().Hour() > 12 {
         forecastFromApi = respData.Daily.Data[1]
     }
     weather.ForecastWeekday = time.Unix(forecastFromApi.Time, 0).Weekday()
@@ -191,7 +181,7 @@ func (this *WeatherSlide) Parse(respBytes []byte) bool {
         weather.PrecipGraphValues = append(weather.PrecipGraphValues, val.PrecipProbability)
     }
 
-    this.Weather = weather;
+    this.Weather = weather
 
     return true
 }

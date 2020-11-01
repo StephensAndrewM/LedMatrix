@@ -10,27 +10,24 @@ import (
     "time"
 )
 
-// Interface for a slide that makes periodic HTTP requests
-type HttpSlide interface {
-    // Indicates the frequency that the slide should refresh
-    GetRefreshInterval() time.Duration
-    // Provides the HTTP request object to send
-    BuildRequest() (*http.Request, error)
-
-    // Callback to parse and convert an incoming HTTP response for validity
-    Parse(resBytes []byte) bool
+type HttpConfig struct {
+    SlideId            string
+    RefreshInterval    time.Duration
+    RequestUrl         string
+    RequestUrlCallback func() (*http.Request, error)
+    ParseCallback      func([]byte) bool
 }
 
 type HttpHelper struct {
-    Slide            HttpSlide
+    Config           HttpConfig
     LastFetchSuccess bool
     Client           *http.Client
     RefreshTicker    *time.Ticker
 }
 
-func NewHttpHelper(slide HttpSlide) *HttpHelper {
+func NewHttpHelper(config HttpConfig) *HttpHelper {
     h := new(HttpHelper)
-    h.Slide = slide
+    h.Config = config
     h.Client = &http.Client{}
     return h
 }
@@ -38,23 +35,13 @@ func NewHttpHelper(slide HttpSlide) *HttpHelper {
 func (this *HttpHelper) StartLoop() {
     if this.RefreshTicker != nil {
         log.WithFields(log.Fields{
-            "slide": fmt.Sprintf("%T", this.Slide),
+            "slide": this.Config.SlideId,
         }).Warn("Attempting to start HTTP loop when already started.")
         return
     }
 
-    req, err := this.Slide.BuildRequest()
-    log.WithFields(log.Fields{
-        "req":      req,
-        "err":      err,
-        "interval": this.Slide.GetRefreshInterval(),
-    }).Debug("HttpHelper refresh loop started.")
-    if err != nil {
-        return
-    }
-
     // Set up period refresh of the data
-    this.RefreshTicker = time.NewTicker(this.Slide.GetRefreshInterval())
+    this.RefreshTicker = time.NewTicker(this.Config.RefreshInterval)
     go func() {
         for range this.RefreshTicker.C {
             this.Fetch()
@@ -68,7 +55,7 @@ func (this *HttpHelper) StartLoop() {
 func (this *HttpHelper) StopLoop() {
     if this.RefreshTicker == nil {
         log.WithFields(log.Fields{
-            "slide": fmt.Sprintf("%T", this.Slide),
+            "slide": this.Config.SlideId,
         }).Warn("Attempting to stop HTTP loop when already stopped.")
         return
     }
@@ -76,8 +63,15 @@ func (this *HttpHelper) StopLoop() {
     this.RefreshTicker = nil
 }
 
+func (this *HttpHelper) BuildRequest() (*http.Request, error) {
+    if this.Config.RequestUrlCallback != nil {
+        return this.Config.RequestUrlCallback()
+    }
+    return http.NewRequest("GET", this.Config.RequestUrl, nil)
+}
+
 func (this *HttpHelper) Fetch() {
-    req, reqErr := this.Slide.BuildRequest()
+    req, reqErr := this.BuildRequest()
     if reqErr != nil {
         log.WithFields(log.Fields{
             "req":   req,
@@ -102,7 +96,7 @@ func (this *HttpHelper) Fetch() {
     resBuf.ReadFrom(res.Body)
     resBytes := resBuf.Bytes()
 
-    this.LastFetchSuccess = this.Slide.Parse(resBytes)
+    this.LastFetchSuccess = this.Config.ParseCallback(resBytes)
 
     log.WithFields(log.Fields{
         "req":          req,
