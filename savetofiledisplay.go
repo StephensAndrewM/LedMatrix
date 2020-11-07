@@ -68,6 +68,15 @@ func (this *SaveToFileDisplay) Redraw(img *image.RGBA) {
 
         // Put the lines on the canvas
         dc.Stroke()
+
+        // Draw dot counts
+        if err := dc.LoadFontFace("/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf", 12); err != nil {
+           panic(err)
+        }
+        for i := 0; i < SCREEN_WIDTH; i += 8 {
+            dc.DrawString(fmt.Sprintf("%d", i), float64(i*RENDER_SCALE), float64(8))
+        }
+
     }
 
     filename := fmt.Sprintf("render/%s.png", this.SlideId)

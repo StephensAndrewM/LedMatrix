@@ -105,7 +105,7 @@ func (this *HttpHelper) Fetch() {
 
     // Output debug file, maybe
     if DEBUG_HTTP {
-        outFile := fmt.Sprintf("debug/%d.txt", time.Now().Unix())
+        outFile := fmt.Sprintf("debug/%d-%s.txt", time.Now().Unix(), this.Config.SlideId)
         log.WithFields(log.Fields{
             "req":     req,
             "outFile": outFile,
