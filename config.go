@@ -12,7 +12,7 @@ func GetConfig() *Config {
         AdvanceInterval: 15 * time.Second,
         Slides: []Slide{
             NewTimeSlide(),
-            NewWeatherSlide(BOSTON_LATLNG),
+            NewWeatherSlide(BOSTON_LAT, BOSTON_LNG),
             NewCountdownSlide([]CountdownEvent{
                 CountdownEvent{
                     civil.Date{2020, time.September, 7},

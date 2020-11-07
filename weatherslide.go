@@ -1,6 +1,7 @@
 package main
 
 import (
+    "cloud.google.com/go/civil"
     "encoding/json"
     "flag"
     "fmt"
@@ -9,17 +10,23 @@ import (
     "image/color"
     "image/draw"
     "image/png"
+    "net/http"
     "os"
     "strings"
     "time"
 )
 
 type WeatherSlide struct {
+    Lat string
+    Lng string
+
     Weather      WeatherData
     WeatherIcons map[string]*image.RGBA
 
-    HttpHelper   *HttpHelper
-    RedrawTicker *time.Ticker
+    RealtimeHttpHelper       *HttpHelper
+    DailyForecastHttpHelper  *HttpHelper
+    HourlyForecastHttpHelper *HttpHelper
+    RedrawTicker             *time.Ticker
 }
 
 type WeatherData struct {
@@ -39,42 +46,67 @@ type WeatherData struct {
 var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
     "If specified, base directory to load weather icons from.")
 
-// Values to use as parameter for initializing slide
-const BOSTON_LATLNG = "42.2129,-71.0349"
+// Latitude/longitude values for API requests
+const BOSTON_LAT = "42.2129"
+const BOSTON_LNG = "-71.0349"
 
-// Define a few constants for drawing
-const WEATHER_COL_WIDTH = 32
-const WEATHER_COL_CENTER = 16
-const WEATHER_ICON_WIDTH = 16
+const WEATHER_MAX_HOURLY_DATA = 51
 
+// ClimaCell API provides these possible weather_code values
 var WEATHER_API_ICON_MAP = map[string]string{
-    "rain":                "rain1.xbm.png",
-    "snow":                "snou.xbm.png",
-    "sleet":               "rain2.xbm.png",
-    "wind":                "wind.xbm.png",
-    "fog":                 "wind.xbm.png",
-    "cloudy":              "clouds.xbm.png",
-    "partly-cloudy-day":   "cloud_sun.xbm.png",
-    "partly-cloudy-night": "cloud_moon.xbm.png",
-    "clear-day":           "sun.xbm.png",
-    "clear-night":         "moon.xbm.png",
+    "freezing_rain_heavy": "rain_snow",
+    "freezing_rain":       "rain_snow",
+    "freezing_rain_light": "rain_snow",
+    "freezing_drizzle":    "rain_snow",
+    "ice_pellets_heavy":   "rain_snow",
+    "ice_pellets":         "rain_snow",
+    "ice_pellets_light":   "rain_snow",
+    "snow_heavy":          "snou",
+    "snow":                "snou",
+    "snow_light":          "snou",
+    "flurries":            "snow_sun",
+    "tstorm":              "rain1",
+    "rain_heavy":          "rain1",
+    "rain":                "rain1",
+    "rain_light":          "rain0",
+    "drizzle":             "rain0_sun",
+    "fog_light":           "cloud_wind",
+    "fog":                 "cloud_wind",
+    "cloudy":              "clouds",
+    "mostly_cloudy":       "clouds",
+    "partly_cloudy":       "cloud_sun",
+    "mostly_clear":        "sun",
+    "clear":               "sun",
 }
 
-func NewWeatherSlide(latLng string) *WeatherSlide {
+func NewWeatherSlide(lat, lng string) *WeatherSlide {
     this := new(WeatherSlide)
-    this.HttpHelper = NewHttpHelper(HttpConfig{
-        SlideId:         "WeatherSlide",
-        RefreshInterval: 2 * time.Minute,
-        RequestUrl: fmt.Sprintf("https://api.darksky.net/forecast/%s/%s",
-            WEATHER_API_KEY, latLng),
-        ParseCallback: this.Parse,
+    this.Lat = lat
+    this.Lng = lng
+    this.RealtimeHttpHelper = NewHttpHelper(HttpConfig{
+        SlideId:            "WeatherSlide-Realtime",
+        RefreshInterval:    5 * time.Minute,
+        RequestUrlCallback: this.GetRealtimeUrl,
+        ParseCallback:      this.ParseRealtime,
+    })
+    this.HourlyForecastHttpHelper = NewHttpHelper(HttpConfig{
+        SlideId:            "WeatherSlide-HourlyForecast",
+        RefreshInterval:    30 * time.Minute,
+        RequestUrlCallback: this.GetHourlyUrl,
+        ParseCallback:      this.ParseHourly,
+    })
+    this.DailyForecastHttpHelper = NewHttpHelper(HttpConfig{
+        SlideId:            "WeatherSlide-DailyForecast",
+        RefreshInterval:    30 * time.Minute,
+        RequestUrlCallback: this.GetDailyUrl,
+        ParseCallback:      this.ParseDaily,
     })
 
     // Preload all the weather icons
     this.WeatherIcons = make(map[string]*image.RGBA)
     for k := range WEATHER_API_ICON_MAP {
         f := *weatherIconBaseDirFlag +
-            "icons/weather/" + WEATHER_API_ICON_MAP[k]
+            "icons/weather/" + WEATHER_API_ICON_MAP[k] + ".xbm.png"
         // Open the file as binary stream
         reader, err1 := os.Open(f)
         if err1 != nil {
@@ -105,11 +137,15 @@ func NewWeatherSlide(latLng string) *WeatherSlide {
 }
 
 func (this *WeatherSlide) Initialize() {
-    this.HttpHelper.StartLoop()
+    this.RealtimeHttpHelper.StartLoop()
+    this.HourlyForecastHttpHelper.StartLoop()
+    this.DailyForecastHttpHelper.StartLoop()
 }
 
 func (this *WeatherSlide) Terminate() {
-    this.HttpHelper.StopLoop()
+    this.RealtimeHttpHelper.StopLoop()
+    this.HourlyForecastHttpHelper.StopLoop()
+    this.DailyForecastHttpHelper.StopLoop()
 }
 
 func (this *WeatherSlide) StartDraw(d Display) {
@@ -124,71 +160,151 @@ func (this *WeatherSlide) IsEnabled() bool {
     return true // Always enabled
 }
 
-func (this *WeatherSlide) Parse(respBytes []byte) bool {
-    // Parse response to JSON
-    var respData WeatherApiResponse
-    jsonErr := json.Unmarshal(respBytes, &respData)
-    if jsonErr != nil {
+func (this *WeatherSlide) BuildUrl(endpoint, responseFields string, includeDates bool) (*http.Request, error) {
+    extraParams := ""
+    if includeDates {
+        end_time := time.Now().Add((WEATHER_MAX_HOURLY_DATA + 2) * time.Hour).Format(time.RFC3339)
+        extraParams = fmt.Sprintf("&start_time=now&end_time=%s", end_time)
+    }
+    url := fmt.Sprintf("https://api.climacell.co/v3/weather/%s?lat=%s&lon=%s&unit_system=us&apikey=%s&fields=%s%s", endpoint, this.Lat, this.Lng, WEATHER_API_KEY, responseFields, extraParams)
+    return http.NewRequest("GET", url, nil)
+}
+
+func (this *WeatherSlide) GetRealtimeUrl() (*http.Request, error) {
+    return this.BuildUrl("realtime", "temp,weather_code", false)
+}
+
+func (this *WeatherSlide) GetHourlyUrl() (*http.Request, error) {
+    return this.BuildUrl("forecast/hourly", "temp,precipitation_probability", true)
+}
+
+func (this *WeatherSlide) GetDailyUrl() (*http.Request, error) {
+    return this.BuildUrl("forecast/daily", "temp,weather_code", true)
+}
+
+func (this *WeatherSlide) ParseRealtime(respBytes []byte) bool {
+    var respData WeatherApiRealtimeResponse
+    err := json.Unmarshal(respBytes, &respData)
+    if err != nil {
         log.WithFields(log.Fields{
-            "error": jsonErr,
-        }).Warn("Could not interpret weather JSON.")
+            "error": err,
+        }).Warn("Could not interpret realtime weather JSON.")
         return false
     }
 
-    // Assert that the response contains what we expect
-    if respData.Current.Icon == "" ||
-        len(respData.Daily.Data) == 0 {
+    this.Weather.CurrentTemp = respData.Temp.Value
+    this.Weather.CurrentIcon = this.GetIcon(respData.Code.Value)
+    return true
+}
+
+func (this *WeatherSlide) ParseDaily(respBytes []byte) bool {
+    var respData []WeatherApiDailyResponse
+    err := json.Unmarshal(respBytes, &respData)
+    if err != nil {
         log.WithFields(log.Fields{
-            "error": respData.Error,
-        }).Warn("Weather response data has no data.")
+            "error": err,
+        }).Warn("Could not interpret daily weather JSON.")
         return false
     }
 
-    var weather WeatherData
-
-    // Convert data on current conditions
-    weather.CurrentTemp = respData.Current.Temperature
-    currentIcon, currentIconExists := this.WeatherIcons[respData.Current.Icon]
-    if currentIconExists {
-        weather.CurrentIcon = currentIcon
-    } else {
+    if len(respData) < 2 {
         log.WithFields(log.Fields{
-            "icon": respData.Current.Icon,
-        }).Warn("Missing icon for current.")
+            "length": len(respData),
+        }).Warn("Fewer days than expected returned for daily weather request.")
+        return false
     }
 
-    // Convert data on today's/tomorrow's forecast
-    forecastFromApi := respData.Daily.Data[0]
+    // Use data for tomorrow if current time is after noon
+    forecastFromApi := respData[0]
     if time.Now().Hour() > 12 {
-        forecastFromApi = respData.Daily.Data[1]
+        forecastFromApi = respData[1]
     }
-    weather.ForecastWeekday = time.Unix(forecastFromApi.Time, 0).Weekday()
-    forecastIcon, forecastIconExists := this.WeatherIcons[forecastFromApi.Icon]
-    if forecastIconExists {
-        weather.ForecastIcon = forecastIcon
-    } else {
+
+    log.WithFields(log.Fields{
+        "data": forecastFromApi,
+    }).Debug("Forecast data")
+
+    forecastDate, err := civil.ParseDate(forecastFromApi.ObservationTime.Value)
+    if err != nil {
         log.WithFields(log.Fields{
-            "icon": forecastFromApi.Icon,
-        }).Warn("Missing icon for forecast.")
+            "data": forecastFromApi.ObservationTime,
+        }).Warn("Could not parse day in daily forecast.")
+        return false
     }
-    weather.ForecastHighTemp = int(forecastFromApi.High)
-    weather.ForecastLowTemp = int(forecastFromApi.Low)
+    this.Weather.ForecastWeekday = forecastDate.In(time.UTC).Weekday()
 
-    // Convert data on hourly temperature/precipitation forecast
-    for _, val := range respData.Hourly.Data[:48] {
-        weather.TimeGraphValues = append(weather.TimeGraphValues, time.Unix(val.Time, 0))
-        weather.TempGraphValues = append(weather.TempGraphValues, val.Temperature)
-        weather.PrecipGraphValues = append(weather.PrecipGraphValues, val.PrecipProbability)
+    this.Weather.ForecastIcon = this.GetIcon(forecastFromApi.Code.Value)
+
+    low := 0.0
+    high := 0.0
+    for _, singleForecast := range forecastFromApi.Temp {
+        if singleForecast.Min.Value != 0 {
+            low = singleForecast.Min.Value
+        }
+        if singleForecast.Max.Value != 0 {
+            high = singleForecast.Max.Value
+        }
+    }
+    if low == 0 || high == 0 {
+        log.WithFields(log.Fields{
+            "data": forecastFromApi.Temp,
+        }).Warn("Could not find high/low temperature in daily forecast.")
+        return false
     }
 
-    this.Weather = weather
+    this.Weather.ForecastHighTemp = int(high)
+    this.Weather.ForecastLowTemp = int(low)
 
     return true
 }
 
+func (this *WeatherSlide) ParseHourly(respBytes []byte) bool {
+    var respData []WeatherApiHourlyResponse
+    err := json.Unmarshal(respBytes, &respData)
+    if err != nil {
+        log.WithFields(log.Fields{
+            "error": err,
+        }).Warn("Could not interpret hourly weather JSON.")
+        return false
+    }
+
+    if len(respData) < WEATHER_MAX_HOURLY_DATA {
+        log.WithFields(log.Fields{
+            "length": len(respData),
+        }).Warn("Fewer hours than expected returned for hourly weather request.")
+        return false
+    }
+
+    for _, val := range respData {
+        t, err := time.Parse(time.RFC3339, val.ObservationTime.Value)
+        if err != nil {
+            log.WithFields(log.Fields{
+                "value": val.ObservationTime,
+            }).Warn("Could not parse time in hourly forecast.")
+            return false
+        }
+        this.Weather.TimeGraphValues = append(this.Weather.TimeGraphValues, t)
+        this.Weather.TempGraphValues = append(this.Weather.TempGraphValues, val.Temp.Value)
+        this.Weather.PrecipGraphValues = append(this.Weather.PrecipGraphValues, val.PrecipProbability.Value)
+    }
+
+    return true
+}
+
+func (this *WeatherSlide) GetIcon(condition string) *image.RGBA {
+    icon, ok := this.WeatherIcons[condition]
+    if !ok {
+        log.WithFields(log.Fields{
+            "condition": condition,
+        }).Warn("Missing icon for weather condition.")
+        return nil
+    }
+    return icon
+}
+
 func (this *WeatherSlide) Draw(img *image.RGBA) {
     // Stop immediately if we have errors
-    if !this.HttpHelper.LastFetchSuccess {
+    if !this.RealtimeHttpHelper.LastFetchSuccess || !this.DailyForecastHttpHelper.LastFetchSuccess || !this.HourlyForecastHttpHelper.LastFetchSuccess {
         DrawError(img, "Weather", "No data.")
         return
     }
@@ -201,7 +317,7 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
     }
     WriteString(img, fmt.Sprintf("%.1f°", this.Weather.CurrentTemp), white, ALIGN_CENTER, 16, 24)
 
-    forecastOriginX := 33
+    forecastOriginX := 32
 
     aqua := color.RGBA{0, 255, 255, 255}
     label := strings.ToUpper(this.Weather.ForecastWeekday.String()[0:3])
@@ -212,9 +328,9 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
     forecastTemp := fmt.Sprintf("%d°/%d°", this.Weather.ForecastHighTemp, this.Weather.ForecastLowTemp)
     WriteString(img, forecastTemp, aqua, ALIGN_CENTER, forecastOriginX+16, 24)
 
-    graphOriginX := 80
+    graphWidth := WEATHER_MAX_HOURLY_DATA
     graphHeight := 10
-    graphWidth := 48
+    graphOriginX := 128-graphWidth
 
     // Thermometer symbol
     tempGraphOriginY := 12
@@ -225,7 +341,7 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
     // Raindrop symbol
     rainGraphOriginY := 28
     WriteString(img, "💧", white, ALIGN_LEFT, graphOriginX-6, rainGraphOriginY-8)
-    DrawNormalizedGraph(img, graphOriginX, rainGraphOriginY-1, graphHeight, 0.0, 1.0, white, this.Weather.PrecipGraphValues)
+    DrawNormalizedGraph(img, graphOriginX, rainGraphOriginY-1, graphHeight, 0.0, 100.0, white, this.Weather.PrecipGraphValues)
     this.DrawTimeAxes(img, graphOriginX, rainGraphOriginY, graphWidth, graphHeight, this.Weather.TimeGraphValues)
 }
 
@@ -246,40 +362,33 @@ func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width,
     }
 }
 
-// Data structures used by the Weather Underground API
-type WeatherApiResponse struct {
-    Current WeatherApiCurrentConditions `json:"currently"`
-    Daily   WeatherApiDailyForecast     `json:"daily"`
-    Hourly  WeatherApiHourlyForecast    `json:"hourly"`
-    Code    int                         `json:"code"`
-    Error   string                      `json:"error"`
+// Data structures used by the ClimaCell JSON API
+type WeatherApiRealtimeResponse struct {
+    Temp WeatherApiFloatValue  `json:"temp"`
+    Code WeatherApiStringValue `json:"weather_code"`
 }
 
-type WeatherApiCurrentConditions struct {
-    Icon              string  `json:"icon"`
-    Temperature       float64 `json:"temperature"`
-    PrecipProbability float64 `json:"precipProbability"`
+type WeatherApiHourlyResponse struct {
+    Temp              WeatherApiFloatValue  `json:"temp"`
+    PrecipProbability WeatherApiFloatValue  `json:"precipitation_probability"`
+    ObservationTime   WeatherApiStringValue `json:"observation_time"`
 }
 
-type WeatherApiDailyForecast struct {
-    Data []WeatherApiDailyForecastData `json:"data"`
+type WeatherApiDailyResponse struct {
+    Temp            []WeatherApiDailySingleForecastTemp `json:"temp"`
+    Code            WeatherApiStringValue               `json:"weather_code"`
+    ObservationTime WeatherApiStringValue               `json:"observation_time"`
 }
 
-type WeatherApiHourlyForecast struct {
-    Data []WeatherApiHourlyForecastData `json:"data"`
+type WeatherApiDailySingleForecastTemp struct {
+    Min WeatherApiFloatValue `json:"min"`
+    Max WeatherApiFloatValue `json:"max"`
 }
 
-type WeatherApiDailyForecastData struct {
-    Time              int64   `json:"time"`
-    Icon              string  `json:"icon"`
-    High              float64 `json:"temperatureHigh"`
-    Low               float64 `json:"temperatureLow"`
-    PrecipProbability float64 `json:"precipProbability"`
+type WeatherApiFloatValue struct {
+    Value float64 `json:"value"`
 }
 
-type WeatherApiHourlyForecastData struct {
-    Time              int64   `json:"time"`
-    Icon              string  `json:"icon"`
-    Temperature       float64 `json:"temperature"`
-    PrecipProbability float64 `json:"precipProbability"`
+type WeatherApiStringValue struct {
+    Value string `json:"value"`
 }
