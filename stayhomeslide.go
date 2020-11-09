@@ -35,16 +35,15 @@ func (this *StayHomeSlide) StopDraw() {
 }
 
 func (this *StayHomeSlide) IsEnabled() bool {
-    // TODO disable this if we all survive
-    return true
+    // Only display this slide for interesting days.
+    return (this.GetDayCount() % 10 == 0) || (this.GetDayCount() % 25 == 0)
 }
 
 func (this *StayHomeSlide) Draw(img *image.RGBA) {
     yellow := color.RGBA{255, 255, 0, 255}
     red := color.RGBA{255, 0, 0, 255}
 
-    start := time.Date(2020, time.March, 10, 0, 0, 0, 0, time.Local)
-    diff := int(math.Ceil(time.Since(start).Hours()/24.0)) - 1
+    diff := this.GetDayCount()    
 
     if DISPLAY_TALLIES {
 
@@ -86,6 +85,11 @@ func (this *StayHomeSlide) Draw(img *image.RGBA) {
 
     WriteString(img, "DAYS SINCE", red, ALIGN_CENTER, 64, 16)
     WriteString(img, "OFFICES CLOSED", red, ALIGN_CENTER, 64, 24)
+}
+
+func (this *StayHomeSlide) GetDayCount() int {
+    start := time.Date(2020, time.March, 10, 0, 0, 0, 0, time.Local)
+    return int(math.Ceil(time.Since(start).Hours()/24.0)) - 1
 }
 
 func Min(a, b int) int {
