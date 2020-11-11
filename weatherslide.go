@@ -47,8 +47,8 @@ var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
     "If specified, base directory to load weather icons from.")
 
 // Latitude/longitude values for API requests
-const BOSTON_LAT = "42.2129"
-const BOSTON_LNG = "-71.0349"
+const BOSTON_LAT = "42.3550"
+const BOSTON_LNG = "-71.0655"
 
 const WEATHER_MAX_HOURLY_DATA = 51
 
@@ -275,6 +275,10 @@ func (this *WeatherSlide) ParseHourly(respBytes []byte) bool {
         return false
     }
 
+    // Remove previous values so old data is overwritten, not appended to.
+    this.Weather.TimeGraphValues = nil
+    this.Weather.TempGraphValues = nil
+    this.Weather.PrecipGraphValues = nil
     for _, val := range respData {
         t, err := time.Parse(time.RFC3339, val.ObservationTime.Value)
         if err != nil {
@@ -283,7 +287,7 @@ func (this *WeatherSlide) ParseHourly(respBytes []byte) bool {
             }).Warn("Could not parse time in hourly forecast.")
             return false
         }
-        this.Weather.TimeGraphValues = append(this.Weather.TimeGraphValues, t)
+        this.Weather.TimeGraphValues = append(this.Weather.TimeGraphValues, t.In(time.Local))
         this.Weather.TempGraphValues = append(this.Weather.TempGraphValues, val.Temp.Value)
         this.Weather.PrecipGraphValues = append(this.Weather.PrecipGraphValues, val.PrecipProbability.Value)
     }
