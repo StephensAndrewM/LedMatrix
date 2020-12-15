@@ -214,10 +214,27 @@ func (this *WeatherSlide) ParseDaily(respBytes []byte) bool {
         return false
     }
 
-    // Use data for tomorrow if current time is after noon
-    forecastFromApi := respData[0]
+    // We want today's forecast before noon, tomorrow's after noon.
+    expectedForecastDate := time.Now().Format("2006-01-02")
     if time.Now().Hour() > 12 {
-        forecastFromApi = respData[1]
+    	expectedForecastDate = time.Now().Add(24 * time.Hour).Format("2006-01-02")
+    }
+
+    // Iterate through the received forecasts to find the one whose date matches.
+	foundDate := false
+    var forecastFromApi WeatherApiDailyResponse
+    for _,dailyForecast := range(respData) {
+    	if dailyForecast.ObservationTime.Value == expectedForecastDate {
+    		foundDate = true
+    		forecastFromApi = dailyForecast
+    	}
+    }
+    if !foundDate {
+    	log.WithFields(log.Fields{
+    		"data": respData,
+    		"expected": expectedForecastDate,
+    	}).Warn("No date in response matched expected forecast date.")
+    	return false
     }
 
     log.WithFields(log.Fields{
