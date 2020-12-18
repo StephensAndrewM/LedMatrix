@@ -61,7 +61,7 @@ func (this *ChristmasSlide) StartDraw(d Display) {
 }
 
 func (this *ChristmasSlide) StopDraw() {
-
+    this.RedrawTicker.Stop()
 }
 
 func (this *ChristmasSlide) IsEnabled() bool {
@@ -100,22 +100,25 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
 
     // Draw some sparkles
     for _, c := range lights {
-        for {
-            x := rand.Intn(21)
-            y := rand.Intn(24) + 1
-            // Don't draw out of tree's bounds
-            if x > TreeDef[y][0] && x < TreeDef[y][1] {
-                img.SetRGBA(treeOffsetX+x, treeOffsetY+y, c)
-                break
-            }
-        }
+        x,y := this.GetRandomWithinTree()
+        img.SetRGBA(treeOffsetX+x, treeOffsetY+y, c)
     }
 
     countdownOffsetX := 82
-    DrawEmptyBox(img, red, countdownOffsetX - 9, 1, 18, 13)
+    DrawEmptyBox(img, red, countdownOffsetX-9, 1, 18, 13)
     WriteString(img, fmt.Sprintf("%d", this.DaysUntil(this.XmasDate)), red, ALIGN_CENTER, countdownOffsetX, 4)
     WriteString(img, "DAYS UNTIL", green, ALIGN_CENTER, countdownOffsetX, 16)
     WriteString(img, "CHRISTMAS", green, ALIGN_CENTER, countdownOffsetX, 24)
+}
+
+func (this *ChristmasSlide) GetRandomWithinTree() (int, int) {
+    for {
+        x := rand.Intn(21)
+        y := rand.Intn(24) + 1 // Don't select top line
+        if x > TreeDef[y][0] && x < TreeDef[y][1] {
+            return x, y
+        }
+    }
 }
 
 func (this *ChristmasSlide) DaysUntil(d time.Time) int {
