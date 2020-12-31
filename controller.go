@@ -56,7 +56,7 @@ func (this *Controller) ServeHTTP(res http.ResponseWriter, req *http.Request) {
             res.WriteHeader(412)
         }
     case "/freeze":
-        log.Debug("Unfreezing slide advancement")
+        log.Debug("Freezing slide advancement")
         this.Slideshow.Freeze()
         res.WriteHeader(200)
     case "/unfreeze":

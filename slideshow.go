@@ -106,6 +106,7 @@ func (this *Slideshow) Freeze() {
 
 func (this *Slideshow) Unfreeze() {
     this.InitAdvanceTicker()
+    this.Advance()
 }
 
 // Checks for internet periodically, not returning until connected.
