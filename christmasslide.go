@@ -106,7 +106,11 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
 
     countdownOffsetX := 82
     DrawEmptyBox(img, red, countdownOffsetX-9, 1, 18, 13)
-    WriteString(img, fmt.Sprintf("%d", this.DaysUntil(this.XmasDate)), red, ALIGN_CENTER, countdownOffsetX, 4)
+    days := this.DaysUntil(this.XmasDate)
+    if days < 0 {
+        days = 0
+    }
+    WriteString(img, fmt.Sprintf("%d", days), red, ALIGN_CENTER, countdownOffsetX, 4)
     WriteString(img, "DAYS UNTIL", green, ALIGN_CENTER, countdownOffsetX, 16)
     WriteString(img, "CHRISTMAS", green, ALIGN_CENTER, countdownOffsetX, 24)
 }
@@ -123,8 +127,5 @@ func (this *ChristmasSlide) GetRandomWithinTree() (int, int) {
 
 func (this *ChristmasSlide) DaysUntil(d time.Time) int {
     diff := time.Until(d).Hours() / 24.0
-    if diff < 0 {
-        return 0
-    }
     return int(math.Ceil(diff))
 }
