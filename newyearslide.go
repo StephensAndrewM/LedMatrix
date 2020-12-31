@@ -144,8 +144,6 @@ func (this *Firework) initEmbers() {
             yspeed := (math.Cos(angle) * v)
             xspeed := math.Sin(angle) * v
 
-            fmt.Printf("New ember position is %.2f,%.2f, speed is %.2f,%.2f\n", this.x, this.y, xspeed, yspeed)
-
             this.embers = append(this.embers, &FireworkEmber{
                 x:      float64(this.x),
                 y:      float64(this.y),

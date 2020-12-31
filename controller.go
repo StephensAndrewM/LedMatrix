@@ -55,6 +55,14 @@ func (this *Controller) ServeHTTP(res http.ResponseWriter, req *http.Request) {
             log.Debug("Cannot stop, slideshow already stopped")
             res.WriteHeader(412)
         }
+    case "/freeze":
+        log.Debug("Unfreezing slide advancement")
+        this.Slideshow.Freeze()
+        res.WriteHeader(200)
+    case "/unfreeze":
+        log.Debug("Unfreezing slide advancement")
+        this.Slideshow.Unfreeze()
+        res.WriteHeader(200)
     case "/shutdown":
         log.Debug("Shutting down slideshow controller")
         this.ShutdownCh <- true

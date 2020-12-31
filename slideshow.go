@@ -3,8 +3,8 @@ package main
 import (
     log "github.com/sirupsen/logrus"
     "net/http"
-    "time"
     "os/exec"
+    "time"
 )
 
 type Slideshow struct {
@@ -43,6 +43,10 @@ func (this *Slideshow) Start() {
     this.Advance()
 
     // Increment the slide number periodically and start/stop drawing
+    this.InitAdvanceTicker()
+}
+
+func (this *Slideshow) InitAdvanceTicker() {
     this.AdvanceTicker = time.NewTicker(this.AdvanceInterval)
     go func() {
         for range this.AdvanceTicker.C {
@@ -94,6 +98,14 @@ func (this *Slideshow) Stop() {
 
     // Draw a blank image
     this.Display.Redraw(NewBlankImage())
+}
+
+func (this *Slideshow) Freeze() {
+    this.AdvanceTicker.Stop()
+}
+
+func (this *Slideshow) Unfreeze() {
+    this.InitAdvanceTicker()
 }
 
 // Checks for internet periodically, not returning until connected.
