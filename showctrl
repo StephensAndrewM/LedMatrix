@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Simple script for sending the approriate HTTP request to control the show
-# Usage: 
+# Usage:
 #   ./showctrl <command>
 #   <command> := start|stop|shutdown|freeze|unfreeze
 
-curl -iX POST http://localhost:5000/$1
+curl -X POST http://localhost:5000/$1

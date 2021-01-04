@@ -36,41 +36,51 @@ func (this *Controller) ServeHTTP(res http.ResponseWriter, req *http.Request) {
         return
     }
 
+    log.WithFields(log.Fields{
+        "endpoint": req.URL.Path,
+    }).Debug("Controller received request")
+
     switch req.URL.Path {
     case "/start":
         if !this.Slideshow.Running {
-            log.Debug("Restarting slideshow")
             this.Slideshow.Start()
-            res.WriteHeader(200)
+            this.SendResponse(res, 200, "Starting slideshow")
         } else {
-            log.Debug("Cannot start, slideshow already running")
-            res.WriteHeader(412)
+            this.SendResponse(res, 412, "Cannot start, slideshow already running")
         }
     case "/stop":
         if this.Slideshow.Running {
-            log.Debug("Stopping slideshow")
             this.Slideshow.Stop()
-            res.WriteHeader(200)
+            this.SendResponse(res, 200, "Stopping slideshow")
         } else {
-            log.Debug("Cannot stop, slideshow already stopped")
-            res.WriteHeader(412)
+            this.SendResponse(res, 412, "Cannot stop, slideshow already stopped")
         }
     case "/freeze":
-        log.Debug("Freezing slide advancement")
-        this.Slideshow.Freeze()
-        res.WriteHeader(200)
+        if !this.Slideshow.Frozen {
+            this.Slideshow.Freeze()
+            this.SendResponse(res, 200, "Freezing slideshow")
+        } else {
+            this.SendResponse(res, 412, "Cannot freeze, slideshow already frozen")
+        }
     case "/unfreeze":
-        log.Debug("Unfreezing slide advancement")
-        this.Slideshow.Unfreeze()
-        res.WriteHeader(200)
+        if this.Slideshow.Frozen {
+            this.Slideshow.Unfreeze()
+            this.SendResponse(res, 200, "Unfreezing slideshow")
+        } else {
+            this.SendResponse(res, 412, "Cannot unfreeze, slideshow already unfrozen")
+        }
     case "/shutdown":
-        log.Debug("Shutting down slideshow controller")
         this.ShutdownCh <- true
-        res.WriteHeader(200)
+        this.SendResponse(res, 200, "Shutting down slideshow controller")
     default:
         log.WithFields(log.Fields{
             "endpoint": req.URL.Path,
-        }).Debug("Unknown request")
-        res.WriteHeader(400)
+        }).Debug("Unknown request type")
+        this.SendResponse(res, 400, "Unknown request type")
     }
+}
+
+func (this *Controller) SendResponse(res http.ResponseWriter, code int, message string) {
+    res.WriteHeader(code)
+    res.Write([]byte(message + "\n"))
 }

@@ -13,6 +13,7 @@ type Slideshow struct {
     Slides          []Slide
 
     Running        bool
+    Frozen         bool
     CurrentSlide   Slide
     CurrentSlideId int
     AdvanceTicker  *time.Ticker
@@ -43,14 +44,13 @@ func (this *Slideshow) Start() {
     this.Advance()
 
     // Increment the slide number periodically and start/stop drawing
-    this.InitAdvanceTicker()
-}
-
-func (this *Slideshow) InitAdvanceTicker() {
     this.AdvanceTicker = time.NewTicker(this.AdvanceInterval)
     go func() {
         for range this.AdvanceTicker.C {
-            this.Advance()
+            // Don't advance if the show has been manually frozen
+            if !this.Frozen {
+                this.Advance()
+            }
         }
     }()
 }
@@ -101,11 +101,11 @@ func (this *Slideshow) Stop() {
 }
 
 func (this *Slideshow) Freeze() {
-    this.AdvanceTicker.Stop()
+    this.Frozen = true
 }
 
 func (this *Slideshow) Unfreeze() {
-    this.InitAdvanceTicker()
+    this.Frozen = false
     this.Advance()
 }
 
