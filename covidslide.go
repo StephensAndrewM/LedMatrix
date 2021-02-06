@@ -26,11 +26,6 @@ type CovidSlide struct {
     AzCases map[civil.Date]int
 }
 
-type DatedCases struct {
-    Date  civil.Date
-    Cases int32
-}
-
 func NewCovidSlide() *CovidSlide {
     this := new(CovidSlide)
     this.UsCases = make(map[civil.Date]int)
@@ -71,71 +66,12 @@ func (this *CovidSlide) IsEnabled() bool {
 
 func (this *CovidSlide) Draw(img *image.RGBA) {
     red := color.RGBA{255, 0, 0, 255}
-
     WriteString(img, "COVID-19 CASES", red, ALIGN_CENTER, 63, 0)
 
-    this.DrawForLocation(img, 8, "US", this.UsCases)
-    this.DrawForLocation(img, 16, "Mass", this.MaCases)
-    this.DrawForLocation(img, 24, "Ariz", this.AzCases)
-}
-
-func (this *CovidSlide) DrawForLocation(img *image.RGBA, y int, label string, cases map[civil.Date]int) {
     yellow := color.RGBA{255, 255, 0, 255}
-    white := color.RGBA{255, 255, 255, 255}
-    gray := color.RGBA{128, 128, 128, 255}
-
-    d1 := civil.DateOf(time.Now().AddDate(0, 0, -1))
-    d2 := civil.DateOf(time.Now().AddDate(0, 0, -2))
-
-    WriteString(img, label, white, ALIGN_LEFT, 1, y)
-    if n1, ok := cases[d1]; ok && n1 > 0 {
-        // First display total number of cases
-        WriteString(img, this.Format(n1), yellow, ALIGN_RIGHT, 63, y)
-
-        // Then calculate and display the diff
-        if n2, ok := cases[d2]; ok && (n1-n2) > 0 {
-            WriteString(img, "+"+this.Format(n1-n2), yellow, ALIGN_RIGHT, 94, y)
-        } else {
-            WriteString(img, "?", gray, ALIGN_RIGHT, 94, y)
-        }
-    } else {
-        WriteString(img, "?", gray, ALIGN_RIGHT, 63, y)
-    }
-
-    var diffValues []float64
-    var diffMax float64
-    for i := -HISTORICAL_COVID_DAYS; i < -1; i++ {
-        dA := civil.DateOf(time.Now().AddDate(0, 0, i))
-        dB := civil.DateOf(time.Now().AddDate(0, 0, i+1))
-        nA, okA := cases[dA]
-        nB, okB := cases[dB]
-        diff := float64(nB - nA)
-        if okA && okB {
-            diffValues = append(diffValues, diff)
-        }
-        if diffMax < diff {
-            diffMax = diff
-        }
-    }
-
-    DrawNormalizedGraph(img, 128-HISTORICAL_COVID_DAYS, y+6, 7, 0, diffMax, yellow, diffValues)
-}
-
-// Limit to only displaying four glyphs max
-func (this *CovidSlide) Format(n int) string {
-    // Switch on number of digits in the number
-    switch int(math.Log10(float64(n))) + 1 {
-    case 4:
-        return fmt.Sprintf("%.1fk", float64(n)/float64(1000))
-    case 5, 6:
-        return fmt.Sprintf("%.0fk", float64(n)/float64(1000))
-    case 7:
-        return fmt.Sprintf("%.1fM", float64(n)/float64(1000000))
-    case 8, 9:
-        return fmt.Sprintf("%.0fM", float64(n)/float64(1000000))
-    default:
-        return fmt.Sprintf("%d", n)
-    }
+    DrawDataRow(img, 8, "US", this.UsCases, yellow)
+    DrawDataRow(img, 16, "Mass", this.MaCases, yellow)
+    DrawDataRow(img, 24, "Ariz", this.AzCases, yellow)
 }
 
 func (this *CovidSlide) FetchData() {
@@ -226,4 +162,66 @@ func (this *CovidSlide) QueryForDate(d civil.Date) bool {
         this.AzCases[d] = azSum
     }
     return true
+}
+
+// Below are various helpers used in both Covid and Vaccination slides
+
+// Limit to only displaying four glyphs using SI notation
+func FormatNumber(n int) string {
+    // Switch on number of digits in the input
+    switch int(math.Log10(float64(n))) + 1 {
+    case 4:
+        return fmt.Sprintf("%.1fk", float64(n)/float64(1000))
+    case 5, 6:
+        return fmt.Sprintf("%.0fk", float64(n)/float64(1000))
+    case 7:
+        return fmt.Sprintf("%.1fM", float64(n)/float64(1000000))
+    case 8, 9:
+        return fmt.Sprintf("%.0fM", float64(n)/float64(1000000))
+    default:
+        return fmt.Sprintf("%d", n)
+    }
+}
+
+func DrawDataRow(img *image.RGBA, y int, label string, count map[civil.Date]int, highlight color.RGBA) {
+    white := color.RGBA{255, 255, 255, 255}
+    gray := color.RGBA{128, 128, 128, 255}
+
+    d1 := civil.DateOf(time.Now().AddDate(0, 0, -1))
+    d2 := civil.DateOf(time.Now().AddDate(0, 0, -2))
+
+    WriteString(img, label, white, ALIGN_LEFT, 1, y)
+    if n1, ok := count[d1]; ok && n1 > 0 {
+        // First display cumulative count
+        WriteString(img, FormatNumber(n1), highlight, ALIGN_RIGHT, 62, y)
+
+        // Then calculate and display the diff for today
+        if n2, ok := count[d2]; ok && (n1-n2) > 0 {
+            WriteString(img, "+"+FormatNumber(n1-n2), highlight, ALIGN_RIGHT, 92, y)
+        } else {
+            WriteString(img, "?", gray, ALIGN_RIGHT, 92, y)
+        }
+    } else {
+        WriteString(img, "?", gray, ALIGN_RIGHT, 62, y)
+    }
+
+    var diffValues []float64
+    var diffMax float64
+    for i := -HISTORICAL_COVID_DAYS; i < -1; i++ {
+        dA := civil.DateOf(time.Now().AddDate(0, 0, i))
+        dB := civil.DateOf(time.Now().AddDate(0, 0, i+1))
+        nA, okA := count[dA]
+        nB, okB := count[dB]
+        if !okA || !okB {
+            diffValues = append(diffValues, 0)
+            continue
+        }
+        diff := float64(nB - nA)
+        diffValues = append(diffValues, diff)
+        if diffMax < diff {
+            diffMax = diff
+        }
+    }
+
+    DrawNormalizedGraph(img, 128-HISTORICAL_COVID_DAYS, y+6, 7, 0, diffMax, highlight, diffValues)
 }
