@@ -36,14 +36,16 @@ func (this *StayHomeSlide) StopDraw() {
 
 func (this *StayHomeSlide) IsEnabled() bool {
     // Only display this slide for interesting days.
-    return (this.GetDayCount() % 10 == 0) || (this.GetDayCount() % 25 == 0)
+    return this.GetDayCount()%10 == 0 ||
+        this.GetDayCount()%25 == 0 ||
+        this.GetDayCount()%365 == 0
 }
 
 func (this *StayHomeSlide) Draw(img *image.RGBA) {
     yellow := color.RGBA{255, 255, 0, 255}
     red := color.RGBA{255, 0, 0, 255}
 
-    diff := this.GetDayCount()    
+    diff := this.GetDayCount()
 
     if DISPLAY_TALLIES {
 
@@ -75,10 +77,10 @@ func (this *StayHomeSlide) Draw(img *image.RGBA) {
 
         DrawIcon(img, "house-16", red, 8, 1)
         DrawIcon(img, "house-16", red, (128 - 8 - 16), 1)
-        
+
         // Draw the number and box centered on the slide
         width := GetDisplayWidth(fmt.Sprintf("%d", diff)) + 7
-        DrawEmptyBox(img, yellow, 64 - (width/2), 1, width, 13)
+        DrawEmptyBox(img, yellow, 64-(width/2), 1, width, 13)
         WriteString(img, fmt.Sprintf("%d", diff), yellow, ALIGN_CENTER, 64, 4)
 
     }
