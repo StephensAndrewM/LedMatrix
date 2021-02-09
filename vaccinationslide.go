@@ -8,6 +8,7 @@ import (
     "image"
     "image/color"
     "strconv"
+    "strings"
     "time"
 )
 
@@ -67,37 +68,58 @@ func (this *VaccinationSlide) Parse(respBytes []byte) bool {
     // We won't draw data before this point
     minDrawDate := civil.DateOf(time.Now().AddDate(0, 0, -HISTORICAL_COVID_DAYS))
 
+    dateCol := -1
+    peopleVaccinatedCol := -1
     for i, row := range rows {
-        // Skip header row
+        // If header row, find the column IDs for the data we need
         if i == 0 {
+            for c, h := range row {
+                header := strings.ToUpper(h)
+                if header == "DATE" {
+                    dateCol = c
+                }
+                if header == "PEOPLE_VACCINATED" {
+                    peopleVaccinatedCol = c
+                }
+            }
+
+            if dateCol == -1 || peopleVaccinatedCol == -1 {
+                log.WithFields(log.Fields{
+                    "dateCol":             dateCol,
+                    "peopleVaccinatedCol": peopleVaccinatedCol,
+                    "row":                 row,
+                }).Warn("Could not find required columns in vaccination CSV.")
+                return false
+            }
             continue
         }
 
-        // Don't record data before the cutoff for graphing
-        d, err := civil.ParseDate(row[0])
+        d, err := civil.ParseDate(row[dateCol])
         if err != nil {
             log.WithFields(log.Fields{
                 "row":   row,
                 "value": row[0],
                 "err":   err,
-            }).Warn("Unparseable date in vaccination CSV")
+            }).Warn("Unparseable date in vaccination CSV.")
             continue
         }
+        // Don't save data before the cutoff for graphing
         if d.Before(minDrawDate) {
             continue
         }
 
-        // Column 6 is people_vaccinated
-        if row[6] == "" {
+        // Treating empty rows as 0 causes problems with diffs so instead we skip them
+        if row[peopleVaccinatedCol] == "" {
             continue
         }
-        n, err := strconv.ParseFloat(row[6], 64)
+        n, err := strconv.ParseFloat(row[peopleVaccinatedCol], 64)
         if err != nil {
             log.WithFields(log.Fields{
-                "row":   row,
-                "value": row[7],
-                "error": err,
-            }).Warn("Unparseable count in vaccination CSV")
+                "row":                 row,
+                "peopleVaccinatedCol": peopleVaccinatedCol,
+                "value":               row[peopleVaccinatedCol],
+                "error":               err,
+            }).Warn("Unparseable count in vaccination CSV.")
         }
         count := int(n)
 
@@ -116,11 +138,11 @@ func (this *VaccinationSlide) Parse(respBytes []byte) bool {
 }
 
 func (this *VaccinationSlide) Draw(img *image.RGBA) {
-    aqua := color.RGBA{0, 255, 255, 255}
-    WriteString(img, "COVID-19 VACCINATIONS", aqua, ALIGN_CENTER, 63, 0)
-
     green := color.RGBA{0, 255, 0, 255}
-    DrawDataRow(img, 8, "US", this.UsCount, green)
-    DrawDataRow(img, 16, "Mass", this.MaCount, green)
-    DrawDataRow(img, 24, "Ariz", this.AzCount, green)
+    WriteString(img, "COVID-19 VACCINATIONS", green, ALIGN_CENTER, 63, 0)
+
+    yellow := color.RGBA{255, 255, 0, 255}
+    DrawDataRow(img, 8, "US", this.UsCount, yellow)
+    DrawDataRow(img, 16, "Mass", this.MaCount, yellow)
+    DrawDataRow(img, 24, "Ariz", this.AzCount, yellow)
 }

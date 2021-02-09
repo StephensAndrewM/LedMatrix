@@ -92,10 +92,12 @@ func (this *CovidSlide) FetchData() {
         }
     }
 
-    log.WithFields(log.Fields{
-        "attempted":  attempted,
-        "successful": successful,
-    }).Info("Fetched latest Covid data.")
+    if attempted < successful {
+        log.WithFields(log.Fields{
+            "attempted":  attempted,
+            "successful": successful,
+        }).Debug("Some Covid queries failed.")
+    }
 }
 
 // Can't use HttpHelper since the data doesn't change frequently
@@ -197,9 +199,9 @@ func DrawDataRow(img *image.RGBA, y int, label string, count map[civil.Date]int,
 
         // Then calculate and display the diff for today
         if n2, ok := count[d2]; ok && (n1-n2) > 0 {
-            WriteString(img, "+"+FormatNumber(n1-n2), highlight, ALIGN_RIGHT, 92, y)
+            WriteString(img, "+"+FormatNumber(n1-n2), highlight, ALIGN_RIGHT, 96, y)
         } else {
-            WriteString(img, "?", gray, ALIGN_RIGHT, 92, y)
+            WriteString(img, "?", gray, ALIGN_RIGHT, 96, y)
         }
     } else {
         WriteString(img, "?", gray, ALIGN_RIGHT, 62, y)
