@@ -13,18 +13,18 @@ import (
 )
 
 type VaccinationSlide struct {
-    UsCount map[civil.Date]int
-    MaCount map[civil.Date]int
-    AzCount map[civil.Date]int
+    UsData DailyData
+    MaData DailyData
+    AzData DailyData
 
     HttpHelper *HttpHelper
 }
 
 func NewVaccinationSlide() *VaccinationSlide {
     this := new(VaccinationSlide)
-    this.UsCount = make(map[civil.Date]int)
-    this.MaCount = make(map[civil.Date]int)
-    this.AzCount = make(map[civil.Date]int)
+    this.UsData = NewDailyData("US")
+    this.MaData = NewDailyData("Mass")
+    this.AzData = NewDailyData("Ariz")
 
     this.HttpHelper = NewHttpHelper(HttpConfig{
         SlideId:         "VaccinationSlide",
@@ -124,16 +124,20 @@ func (this *VaccinationSlide) Parse(respBytes []byte) bool {
         count := int(n)
 
         if row[1] == "Massachusetts" {
-            this.MaCount[d] = count
+            this.MaData.Totals[d] = count
         }
         if row[1] == "Arizona" {
-            this.AzCount[d] = count
+            this.AzData.Totals[d] = count
         }
         if row[1] == "United States" {
-            this.UsCount[d] = count
+            this.UsData.Totals[d] = count
         }
-
     }
+
+    this.UsData = CalculateDiffs(this.UsData)
+    this.MaData = CalculateDiffs(this.MaData)
+    this.AzData = CalculateDiffs(this.AzData)
+    
     return true
 }
 
@@ -142,7 +146,7 @@ func (this *VaccinationSlide) Draw(img *image.RGBA) {
     WriteString(img, "COVID-19 VACCINATIONS", green, ALIGN_CENTER, 63, 0)
 
     yellow := color.RGBA{255, 255, 0, 255}
-    DrawDataRow(img, 8, "US", this.UsCount, yellow)
-    DrawDataRow(img, 16, "Mass", this.MaCount, yellow)
-    DrawDataRow(img, 24, "Ariz", this.AzCount, yellow)
+    DrawDataRow(img, 8, this.UsData, yellow)
+    DrawDataRow(img, 16, this.MaData, yellow)
+    DrawDataRow(img, 24, this.AzData, yellow)
 }

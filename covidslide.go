@@ -19,18 +19,18 @@ import (
 var HISTORICAL_COVID_DAYS = 29
 
 type CovidSlide struct {
+    UsData DailyData
+    MaData DailyData
+    AzData DailyData
+
     FetchTicker *time.Ticker
-    // Store historically retrieved data
-    UsCases map[civil.Date]int
-    MaCases map[civil.Date]int
-    AzCases map[civil.Date]int
 }
 
 func NewCovidSlide() *CovidSlide {
     this := new(CovidSlide)
-    this.UsCases = make(map[civil.Date]int)
-    this.MaCases = make(map[civil.Date]int)
-    this.AzCases = make(map[civil.Date]int)
+    this.UsData = NewDailyData("US")
+    this.MaData = NewDailyData("Mass")
+    this.AzData = NewDailyData("Ariz")
     return this
 }
 
@@ -69,9 +69,9 @@ func (this *CovidSlide) Draw(img *image.RGBA) {
     WriteString(img, "COVID-19 CASES", red, ALIGN_CENTER, 63, 0)
 
     yellow := color.RGBA{255, 255, 0, 255}
-    DrawDataRow(img, 8, "US", this.UsCases, yellow)
-    DrawDataRow(img, 16, "Mass", this.MaCases, yellow)
-    DrawDataRow(img, 24, "Ariz", this.AzCases, yellow)
+    DrawDataRow(img, 8, this.UsData, yellow)
+    DrawDataRow(img, 16, this.MaData, yellow)
+    DrawDataRow(img, 24, this.AzData, yellow)
 }
 
 func (this *CovidSlide) FetchData() {
@@ -82,9 +82,9 @@ func (this *CovidSlide) FetchData() {
     for i := 1; i <= HISTORICAL_COVID_DAYS; i++ {
         d := civil.DateOf(time.Now().AddDate(0, 0, -i))
         // Check if fetch was successful based on data presence
-        _, dOk := this.UsCases[d]
+        _, ok := this.UsData.Totals[d]
         // Refresh if data is 1 or 2 days old, since it might not be stable
-        if !dOk || i < 3 {
+        if !ok || i < 3 {
             attempted++
             if this.QueryForDate(d) {
                 successful++
@@ -98,6 +98,10 @@ func (this *CovidSlide) FetchData() {
             "successful": successful,
         }).Debug("Some Covid queries failed.")
     }
+
+    this.UsData = CalculateDiffs(this.UsData)
+    this.MaData = CalculateDiffs(this.MaData)
+    this.AzData = CalculateDiffs(this.AzData)
 }
 
 // Can't use HttpHelper since the data doesn't change frequently
@@ -125,6 +129,8 @@ func (this *CovidSlide) QueryForDate(d civil.Date) bool {
         return false
     }
 
+    // Data is broken down by county so we need to aggregate many rows to
+    // get the total for an individual state or the entire country.
     usSum := 0
     maSum := 0
     azSum := 0
@@ -153,15 +159,14 @@ func (this *CovidSlide) QueryForDate(d civil.Date) bool {
         }
     }
 
-    // We know that there are some cases so a 0 value indicates an error
     if usSum > 0 {
-        this.UsCases[d] = usSum
+        this.UsData.Totals[d] = usSum
     }
     if maSum > 0 {
-        this.MaCases[d] = maSum
+        this.MaData.Totals[d] = maSum
     }
     if azSum > 0 {
-        this.AzCases[d] = azSum
+        this.AzData.Totals[d] = azSum
     }
     return true
 }
@@ -185,45 +190,81 @@ func FormatNumber(n int) string {
     }
 }
 
-func DrawDataRow(img *image.RGBA, y int, label string, count map[civil.Date]int, highlight color.RGBA) {
+// Container for a timeseries of daily-updated data
+type DailyData struct {
+    Label string
+    Total int
+    Totals map[civil.Date]int
+    Diffs map[civil.Date]int
+}
+
+func NewDailyData(label string) DailyData {
+    var d DailyData
+    d.Label = label
+    d.Totals = make(map[civil.Date]int)
+    d.Diffs = make(map[civil.Date]int)
+    return d
+}
+
+func DrawDataRow(img *image.RGBA, y int, data DailyData, highlight color.RGBA) {
     white := color.RGBA{255, 255, 255, 255}
     gray := color.RGBA{128, 128, 128, 255}
 
-    d1 := civil.DateOf(time.Now().AddDate(0, 0, -1))
-    d2 := civil.DateOf(time.Now().AddDate(0, 0, -2))
+    yesterday := civil.DateOf(time.Now().AddDate(0, 0, -1))
 
-    WriteString(img, label, white, ALIGN_LEFT, 1, y)
-    if n1, ok := count[d1]; ok && n1 > 0 {
-        // First display cumulative count
-        WriteString(img, FormatNumber(n1), highlight, ALIGN_RIGHT, 62, y)
+    WriteString(img, data.Label, white, ALIGN_LEFT, 1, y)
 
-        // Then calculate and display the diff for today
-        if n2, ok := count[d2]; ok && (n1-n2) > 0 {
-            WriteString(img, "+"+FormatNumber(n1-n2), highlight, ALIGN_RIGHT, 96, y)
-        } else {
-            WriteString(img, "?", gray, ALIGN_RIGHT, 96, y)
-        }
+    if val, ok := data.Totals[yesterday]; ok && val > 0 {
+        WriteString(img, FormatNumber(val), highlight, ALIGN_RIGHT, 62, y)
     } else {
         WriteString(img, "?", gray, ALIGN_RIGHT, 62, y)
     }
 
-    var diffValues []float64
-    var diffMax float64
-    for i := -HISTORICAL_COVID_DAYS; i < -1; i++ {
-        dA := civil.DateOf(time.Now().AddDate(0, 0, i))
-        dB := civil.DateOf(time.Now().AddDate(0, 0, i+1))
-        nA, okA := count[dA]
-        nB, okB := count[dB]
-        if !okA || !okB {
-            diffValues = append(diffValues, 0)
-            continue
-        }
-        diff := float64(nB - nA)
-        diffValues = append(diffValues, diff)
-        if diffMax < diff {
-            diffMax = diff
-        }
+    if val, ok := data.Diffs[yesterday]; ok && val > 0 {
+        WriteString(img, "+"+FormatNumber(val), highlight, ALIGN_RIGHT, 96, y)
+    } else {
+        WriteString(img, "+?", gray, ALIGN_RIGHT, 96, y)
     }
 
-    DrawNormalizedGraph(img, 128-HISTORICAL_COVID_DAYS, y+6, 7, 0, diffMax, highlight, diffValues)
+    DrawSemiAutoNormalizedGraph(img, 128-HISTORICAL_COVID_DAYS, y+6, 7, highlight, ToDiffsForGraph(data.Diffs))
+}
+
+func CalculateDiffs(data DailyData) DailyData {
+    // Store the last nonzero value to gloss over data gaps.
+    var lastVal int
+
+    for i := -HISTORICAL_COVID_DAYS+1; i < 0; i++ {
+        // If there was a value for 1 day prior, use that as the last value.
+        dA := civil.DateOf(time.Now().AddDate(0, 0, i-1))
+        valA, okA := data.Totals[dA]
+        if okA {
+            lastVal = valA
+        }
+
+        dB := civil.DateOf(time.Now().AddDate(0, 0, i))
+        valB, okB := data.Totals[dB]
+        // Assuming values continuously increase, we can keep reassigning total.
+        if okB {
+            data.Total = valB
+        }
+
+        data.Diffs[dB] = 0
+        if okB && lastVal > 0 {
+            data.Diffs[dB] = valB - lastVal
+        }
+    }
+    return data
+}
+
+func ToDiffsForGraph(diffsByDate map[civil.Date]int) []float64 {
+    var diffs []float64
+    for i := -HISTORICAL_COVID_DAYS+1; i < 0; i++ {
+        d := civil.DateOf(time.Now().AddDate(0, 0, i))
+        val, ok := diffsByDate[d]
+        if !ok {
+            val = 0
+        }
+        diffs = append(diffs, float64(val))
+    }
+    return diffs
 }

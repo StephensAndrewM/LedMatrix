@@ -230,6 +230,16 @@ func DrawAutoNormalizedGraph(img *image.RGBA, x, y, h int, c color.RGBA, data []
     DrawNormalizedGraph(img, x, y, h, min, max, c, data)
 }
 
+func DrawSemiAutoNormalizedGraph(img *image.RGBA, x, y, h int, c color.RGBA, data []float64) {
+    max := data[0]
+    for _, val := range data {
+        if val > max {
+            max = val
+        }
+    }
+    DrawNormalizedGraph(img, x, y, h, 0, max, c, data)
+}
+
 func DrawNormalizedGraph(img *image.RGBA, x, y, h int, min, max float64, c color.RGBA, data []float64) {
     dataRange := max - min
     var normalized []int
