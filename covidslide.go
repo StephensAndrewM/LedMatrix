@@ -67,7 +67,7 @@ func (this *CovidSlide) IsEnabled() bool {
 
 func (this *CovidSlide) Draw(img *image.RGBA) {
     // Stop immediately if we have too many errors
-    if !this.LastFetchSuccessRatio < 0.5 {
+    if this.LastFetchSuccessRatio < 0.5 {
         DrawError(img, "Covid Cases", "Missing data.")
         return
     }
