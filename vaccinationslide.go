@@ -137,11 +137,17 @@ func (this *VaccinationSlide) Parse(respBytes []byte) bool {
     this.UsData = CalculateDiffs(this.UsData)
     this.MaData = CalculateDiffs(this.MaData)
     this.AzData = CalculateDiffs(this.AzData)
-    
+
     return true
 }
 
 func (this *VaccinationSlide) Draw(img *image.RGBA) {
+    // Stop immediately if we have errors
+    if !this.HttpHelper.LastFetchSuccess {
+        DrawError(img, "Covid Vaccination", "Missing data.")
+        return
+    }
+
     green := color.RGBA{0, 255, 0, 255}
     WriteString(img, "COVID-19 VACCINATIONS", green, ALIGN_CENTER, 63, 0)
 

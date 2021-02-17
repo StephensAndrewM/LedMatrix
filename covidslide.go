@@ -23,7 +23,8 @@ type CovidSlide struct {
     MaData DailyData
     AzData DailyData
 
-    FetchTicker *time.Ticker
+    FetchTicker           *time.Ticker
+    LastFetchSuccessRatio float64
 }
 
 func NewCovidSlide() *CovidSlide {
@@ -65,6 +66,12 @@ func (this *CovidSlide) IsEnabled() bool {
 }
 
 func (this *CovidSlide) Draw(img *image.RGBA) {
+    // Stop immediately if we have too many errors
+    if !this.LastFetchSuccessRatio < 0.5 {
+        DrawError(img, "Covid Cases", "Missing data.")
+        return
+    }
+
     red := color.RGBA{255, 0, 0, 255}
     WriteString(img, "COVID-19 CASES", red, ALIGN_CENTER, 63, 0)
 
@@ -102,6 +109,8 @@ func (this *CovidSlide) FetchData() {
     this.UsData = CalculateDiffs(this.UsData)
     this.MaData = CalculateDiffs(this.MaData)
     this.AzData = CalculateDiffs(this.AzData)
+
+    this.LastFetchSuccessRatio = float64(successful) / float64(attempted)
 }
 
 // Can't use HttpHelper since the data doesn't change frequently
@@ -192,10 +201,10 @@ func FormatNumber(n int) string {
 
 // Container for a timeseries of daily-updated data
 type DailyData struct {
-    Label string
-    Total int
+    Label  string
+    Total  int
     Totals map[civil.Date]int
-    Diffs map[civil.Date]int
+    Diffs  map[civil.Date]int
 }
 
 func NewDailyData(label string) DailyData {
@@ -233,7 +242,7 @@ func CalculateDiffs(data DailyData) DailyData {
     // Store the last nonzero value to gloss over data gaps.
     var lastVal int
 
-    for i := -HISTORICAL_COVID_DAYS+1; i < 0; i++ {
+    for i := -HISTORICAL_COVID_DAYS + 1; i < 0; i++ {
         // If there was a value for 1 day prior, use that as the last value.
         dA := civil.DateOf(time.Now().AddDate(0, 0, i-1))
         valA, okA := data.Totals[dA]
@@ -258,7 +267,7 @@ func CalculateDiffs(data DailyData) DailyData {
 
 func ToDiffsForGraph(diffsByDate map[civil.Date]int) []float64 {
     var diffs []float64
-    for i := -HISTORICAL_COVID_DAYS+1; i < 0; i++ {
+    for i := -HISTORICAL_COVID_DAYS + 1; i < 0; i++ {
         d := civil.DateOf(time.Now().AddDate(0, 0, i))
         val, ok := diffsByDate[d]
         if !ok {
