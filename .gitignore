@@ -1,2 +1,3 @@
-# Don't save the debug outputs
+# Don't save debug outputs
 debug/*.txt
+render/*

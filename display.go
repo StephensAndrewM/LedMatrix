@@ -1,10 +1,10 @@
 package main
 
 import (
-    "image"
+	"image"
 )
 
 type Display interface {
-    Initialize()
-    Redraw(img *image.RGBA)
+	Initialize()
+	Redraw(img *image.RGBA)
 }

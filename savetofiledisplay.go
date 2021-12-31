@@ -70,7 +70,7 @@ func (this *SaveToFileDisplay) Redraw(img *image.RGBA) {
         dc.Stroke()
 
         // Draw dot counts
-        if err := dc.LoadFontFace("/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf", 12); err != nil {
+        if err := dc.LoadFontFace("/usr/share/fonts/truetype/ubuntu/UbuntuMono-Regular.ttf", 12); err != nil {
            panic(err)
         }
         for i := 0; i < SCREEN_WIDTH; i += 8 {
