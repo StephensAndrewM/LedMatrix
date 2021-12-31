@@ -72,7 +72,6 @@ func (this *HttpHelper) BuildRequest() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "github.com/stephensandrewm/LedMatrix")
 	return req, nil
 }
 

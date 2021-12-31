@@ -8,12 +8,12 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
-
-	log "github.com/sirupsen/logrus"
-
+	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type WeatherSlide struct {
@@ -80,16 +80,16 @@ var WEATHER_API_ICON_MAP = map[string]string{
 func NewWeatherSlide() *WeatherSlide {
 	this := new(WeatherSlide)
 	this.RealtimeHttpHelper = NewHttpHelper(HttpConfig{
-		SlideId:         "WeatherSlide-Realtime",
-		RefreshInterval: 5 * time.Minute,
-		RequestUrl:      fmt.Sprintf("https://api.weather.gov/stations/%s/observations/latest", NWS_STATION),
-		ParseCallback:   this.ParseRealtime,
+		SlideId:            "WeatherSlide-Realtime",
+		RefreshInterval:    5 * time.Minute,
+		RequestUrlCallback: this.BuildRealtimeUrl,
+		ParseCallback:      this.ParseRealtime,
 	})
 	this.ForecastHttpHelper = NewHttpHelper(HttpConfig{
-		SlideId:         "WeatherSlide-Forecast",
-		RefreshInterval: 30 * time.Minute,
-		RequestUrl:      fmt.Sprintf("https://api.weather.gov/gridpoints/%s/forecast", NWS_OFFICE),
-		ParseCallback:   this.ParseForecast,
+		SlideId:            "WeatherSlide-Forecast",
+		RefreshInterval:    30 * time.Minute,
+		RequestUrlCallback: this.BuildForecastUrl,
+		ParseCallback:      this.ParseForecast,
 	})
 
 	// Preload all the weather icons
@@ -148,6 +148,25 @@ func (this *WeatherSlide) IsEnabled() bool {
 	return true // Always enabled
 }
 
+func (this *WeatherSlide) BuildRealtimeUrl() (*http.Request, error) {
+	return this.BuildUrl(fmt.Sprintf("https://api.weather.gov/stations/%s/observations/latest", NWS_STATION))
+}
+
+func (this *WeatherSlide) BuildForecastUrl() (*http.Request, error) {
+	return this.BuildUrl(fmt.Sprintf("https://api.weather.gov/gridpoints/%s/forecast", NWS_OFFICE))
+}
+
+func (this *WeatherSlide) BuildUrl(url string) (*http.Request, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Add required headers to outgoing requests.
+	req.Header.Set("User-Agent", "https://github.com/stephensandrewm/LedMatrix")
+	req.Header.Set("Accept", "application/ld+json")
+	return req, nil
+}
+
 func (this *WeatherSlide) ParseRealtime(respBytes []byte) bool {
 	var respData WeatherGovObservations
 	err := json.Unmarshal(respBytes, &respData)
@@ -158,17 +177,17 @@ func (this *WeatherSlide) ParseRealtime(respBytes []byte) bool {
 		return false
 	}
 
-	t, err := time.Parse(time.RFC3339, respData.Properties.Timestamp)
+	t, err := time.Parse(time.RFC3339, respData.Timestamp)
 	if err != nil || time.Now().Sub(t) > (6*time.Hour) {
 		log.WithFields(log.Fields{
-			"Timestamp": respData.Properties.Timestamp,
+			"Timestamp": respData.Timestamp,
 		}).Warn("Invalid last update time for observations.")
 		return false
 	}
 
-	tempInCelsius := float64(respData.Properties.Temperature.Value)
+	tempInCelsius := float64(respData.Temperature.Value)
 	this.Weather.CurrentTemp = (tempInCelsius * (9 / 5)) + 32.0
-	this.Weather.CurrentIcon = this.GetIcon(respData.Properties.Icon)
+	this.Weather.CurrentIcon = this.GetIcon(respData.Icon)
 	return true
 }
 
@@ -182,10 +201,10 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 		return false
 	}
 
-	t, err := time.Parse(time.RFC3339, respData.Properties.UpdateTime)
+	t, err := time.Parse(time.RFC3339, respData.UpdateTime)
 	if err != nil || time.Now().Sub(t) > (6*time.Hour) {
 		log.WithFields(log.Fields{
-			"UpdateTime": respData.Properties.UpdateTime,
+			"UpdateTime": respData.UpdateTime,
 		}).Warn("Invalid last update time for forecast.")
 		return false
 	}
@@ -198,7 +217,7 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 	// If after 3 PM, show nightly forecast
 	if time.Now().Hour() < 15 {
 		fTodayEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 18, 0, 0, 0, tz)
-		fToday := this.GetForecastWithEndTime(fTodayEndTime, respData.Properties.Periods)
+		fToday := this.GetForecastWithEndTime(fTodayEndTime, respData.Periods)
 		if fToday == nil {
 			log.WithFields(log.Fields{
 				"fTodayEndTime": fTodayEndTime,
@@ -212,7 +231,7 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 
 	}
 	fTonightEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 6, 0, 0, 0, tz)
-	fTonight := this.GetForecastWithEndTime(fTonightEndTime, respData.Properties.Periods)
+	fTonight := this.GetForecastWithEndTime(fTonightEndTime, respData.Periods)
 	if fTonight == nil {
 		log.WithFields(log.Fields{
 			"fTonightEndTime": fTonightEndTime,
@@ -225,7 +244,7 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 	this.Weather.Forecast1Icon = this.GetIcon(fTonight.Icon)
 
 	fTomorrowEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 18, 0, 0, 0, tz)
-	fTomorrow := this.GetForecastWithEndTime(fTomorrowEndTime, respData.Properties.Periods)
+	fTomorrow := this.GetForecastWithEndTime(fTomorrowEndTime, respData.Periods)
 	if fTomorrow == nil {
 		log.WithFields(log.Fields{
 			"fTomorrowEndTime": fTomorrowEndTime,
@@ -233,7 +252,7 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 		return false
 	}
 	fTomorrowNightEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+2, 6, 0, 0, 0, tz)
-	fTomorrowNight := this.GetForecastWithEndTime(fTomorrowNightEndTime, respData.Properties.Periods)
+	fTomorrowNight := this.GetForecastWithEndTime(fTomorrowNightEndTime, respData.Periods)
 	if fTomorrowNight == nil {
 		log.WithFields(log.Fields{
 			"fTomorrowNightEndTime": fTomorrowNightEndTime,
@@ -276,10 +295,6 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
 		DrawError(img, "Weather", "No data.")
 		return
 	}
-
-	log.WithFields(log.Fields{
-		"this": this.Weather,
-	}).Debug("Drawing weather data.")
 
 	this.DrawWeatherBox(img, 21, "NOW", fmt.Sprintf("%.1f°", this.Weather.CurrentTemp), this.Weather.CurrentIcon)
 
@@ -326,10 +341,6 @@ func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width,
 
 // Data structures used by api.weather.gov JSON feed
 type WeatherGovObservations struct {
-	Properties WeatherGovObservationsProperties
-}
-
-type WeatherGovObservationsProperties struct {
 	Timestamp   string
 	Icon        string
 	Temperature WeatherGovObservationsTemperature
@@ -341,10 +352,6 @@ type WeatherGovObservationsTemperature struct {
 }
 
 type WeatherGovForecast struct {
-	Properties WeatherGovForecastProperties
-}
-
-type WeatherGovForecastProperties struct {
 	UpdateTime string
 	Periods    []WeatherGovForecastPeriod
 }
