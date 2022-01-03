@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,7 +21,7 @@ type WeatherSlide struct {
 	Weather      WeatherData
 	WeatherIcons map[string]*image.RGBA
 
-	RealtimeHttpHelper       *HttpHelper
+	ObservationsHttpHelper   *HttpHelper
 	ForecastHttpHelper       *HttpHelper
 	HourlyForecastHttpHelper *HttpHelper
 	RedrawTicker             *time.Ticker
@@ -51,39 +52,57 @@ const NWS_STATION = "KBOS"
 
 const WEATHER_MAX_HOURLY_DATA = 51
 
+// Set of possible values provided by https://api.weather.gov/icons
 var WEATHER_API_ICON_MAP = map[string]string{
-	"freezing_rain_heavy": "rain_snow",
-	"freezing_rain":       "rain_snow",
-	"freezing_rain_light": "rain_snow",
-	"freezing_drizzle":    "rain_snow",
-	"ice_pellets_heavy":   "rain_snow",
-	"ice_pellets":         "rain_snow",
-	"ice_pellets_light":   "rain_snow",
-	"snow_heavy":          "snou",
-	"snow":                "snou",
-	"snow_light":          "snou",
-	"flurries":            "snow_sun",
-	"tstorm":              "rain1",
-	"rain_heavy":          "rain1",
-	"rain":                "rain1",
-	"rain_light":          "rain0",
-	"drizzle":             "rain0_sun",
-	"fog_light":           "cloud_wind",
-	"fog":                 "cloud_wind",
-	"cloudy":              "clouds",
-	"mostly_cloudy":       "clouds",
-	"partly_cloudy":       "cloud_sun",
-	"mostly_clear":        "sun",
-	"clear":               "sun",
+	"day/skc":         "sun",             // Fair/clear
+	"night/skc":       "moon",            // Fair/clear
+	"day/few":         "cloud_sun",       // A few clouds
+	"night/few":       "cloud_moon",      // A few clouds
+	"day/sct":         "cloud_sun",       // Partly cloudy
+	"night/sct":       "cloud_moon",      // Partly cloudy
+	"bkn":             "clouds",          // Mostly cloudy
+	"ovc":             "clouds",          // Overcast
+	"day/wind_skc":    "sun",             // Fair/clear and windy
+	"night/wind_skc":  "moon",            // Fair/clear and windy
+	"day/wind_few":    "cloud_wind_sun",  // A few clouds and windy
+	"night/wind_few":  "cloud_wind_moon", // A few clouds and windy
+	"day/wind_sct":    "cloud_wind_sun",  // Partly cloudy and windy
+	"night/wind_sct":  "cloud_wind_moon", // Partly cloudy and windy
+	"wind_bkn":        "cloud_wind",      // Mostly cloudy and windy
+	"wind_ovc":        "cloud_wind",      // Overcast and windy
+	"snow":            "snow",            // Snow
+	"rain_snow":       "rain_snow",       // Rain/snow
+	"rain_sleet":      "rain_snow",       // Rain/sleet
+	"snow_sleet":      "rain_snow",       // Snow/sleet
+	"fzra":            "rain1",           // Freezing rain
+	"rain_fzra":       "rain1",           // Rain/freezing rain
+	"snow_fzra":       "rain_snow",       // Freezing rain/snow
+	"sleet":           "rain1",           // Sleet
+	"rain":            "rain1",           // Rain
+	"rain_showers":    "rain0",           // Rain showers (high cloud cover)
+	"rain_showers_hi": "rain0",           // Rain showers (low cloud cover)
+	"tsra":            "lightning",       // Thunderstorm (high cloud cover)
+	"tsra_sct":        "lightning",       // Thunderstorm (medium cloud cover)
+	"tsra_hi":         "lightning",       // Thunderstorm (low cloud cover)
+	"blizzard":        "snow",            // Blizzard
+	"fog":             "cloud",           // Fog/mist
+	// "tornado":         "",                // Tornado
+	// "hurricane":       "",                // Hurricane conditions
+	// "tropical_storm":  "",                // Tropical storm conditions
+	// "dust":            "",                // Dust
+	// "smoke":           "",                // Smoke
+	// "haze":            "",                // Haze
+	// "hot":             "",                // Hot
+	// "cold":            "",                // Cold
 }
 
 func NewWeatherSlide() *WeatherSlide {
 	this := new(WeatherSlide)
-	this.RealtimeHttpHelper = NewHttpHelper(HttpConfig{
-		SlideId:            "WeatherSlide-Realtime",
+	this.ObservationsHttpHelper = NewHttpHelper(HttpConfig{
+		SlideId:            "WeatherSlide-Observations",
 		RefreshInterval:    5 * time.Minute,
-		RequestUrlCallback: this.BuildRealtimeUrl,
-		ParseCallback:      this.ParseRealtime,
+		RequestUrlCallback: this.BuildObservationsUrl,
+		ParseCallback:      this.ParseObservations,
 	})
 	this.ForecastHttpHelper = NewHttpHelper(HttpConfig{
 		SlideId:            "WeatherSlide-Forecast",
@@ -96,7 +115,7 @@ func NewWeatherSlide() *WeatherSlide {
 	this.WeatherIcons = make(map[string]*image.RGBA)
 	for k := range WEATHER_API_ICON_MAP {
 		f := *weatherIconBaseDirFlag +
-			"icons/weather/" + WEATHER_API_ICON_MAP[k] + ".xbm.png"
+			"icons/weather/" + WEATHER_API_ICON_MAP[k] + ".png"
 		// Open the file as binary stream
 		reader, err1 := os.Open(f)
 		if err1 != nil {
@@ -127,12 +146,12 @@ func NewWeatherSlide() *WeatherSlide {
 }
 
 func (this *WeatherSlide) Initialize() {
-	this.RealtimeHttpHelper.StartLoop()
+	this.ObservationsHttpHelper.StartLoop()
 	this.ForecastHttpHelper.StartLoop()
 }
 
 func (this *WeatherSlide) Terminate() {
-	this.RealtimeHttpHelper.StopLoop()
+	this.ObservationsHttpHelper.StopLoop()
 	this.ForecastHttpHelper.StopLoop()
 }
 
@@ -148,7 +167,7 @@ func (this *WeatherSlide) IsEnabled() bool {
 	return true // Always enabled
 }
 
-func (this *WeatherSlide) BuildRealtimeUrl() (*http.Request, error) {
+func (this *WeatherSlide) BuildObservationsUrl() (*http.Request, error) {
 	return this.BuildUrl(fmt.Sprintf("https://api.weather.gov/stations/%s/observations/latest", NWS_STATION))
 }
 
@@ -167,13 +186,13 @@ func (this *WeatherSlide) BuildUrl(url string) (*http.Request, error) {
 	return req, nil
 }
 
-func (this *WeatherSlide) ParseRealtime(respBytes []byte) bool {
+func (this *WeatherSlide) ParseObservations(respBytes []byte) bool {
 	var respData WeatherGovObservations
 	err := json.Unmarshal(respBytes, &respData)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).Warn("Could not interpret realtime weather JSON.")
+		}).Warn("Could not interpret observations weather JSON.")
 		return false
 	}
 
@@ -278,25 +297,45 @@ func (this *WeatherSlide) GetForecastWithEndTime(expectedEndTime time.Time, peri
 	return nil
 }
 
-func (this *WeatherSlide) GetIcon(condition string) *image.RGBA {
-	icon, ok := this.WeatherIcons[condition]
-	if !ok {
+func (this *WeatherSlide) GetIcon(url string) *image.RGBA {
+	r := regexp.MustCompile("\\/icons\\/land\\/([^\\/]+\\/([a-z_]+))")
+	m := r.FindStringSubmatch(url)
+	if len(m) < 3 || m[1] == "" || m[2] == "" {
 		log.WithFields(log.Fields{
-			"condition": condition,
-		}).Warn("Missing icon for weather condition.")
+			"url": url,
+		}).Warn("Could not extract condition from icon URL.")
 		return nil
 	}
-	return icon
+	conditionWithTimeOfDay := m[1]
+	condition := m[2]
+	icon, ok := this.WeatherIcons[conditionWithTimeOfDay]
+	if ok {
+		return icon
+	}
+
+	icon, ok = this.WeatherIcons[condition]
+	if ok {
+		return icon
+	}
+	log.WithFields(log.Fields{
+		"url":                    url,
+		"condition":              condition,
+		"conditionWithTimeOfDay": conditionWithTimeOfDay,
+	}).Warn("Missing icon for weather condition.")
+	return nil
 }
 
 func (this *WeatherSlide) Draw(img *image.RGBA) {
 	// Stop immediately if we have errors
-	if !this.RealtimeHttpHelper.LastFetchSuccess || !this.ForecastHttpHelper.LastFetchSuccess {
+	if !this.ObservationsHttpHelper.LastFetchSuccess || !this.ForecastHttpHelper.LastFetchSuccess {
 		DrawError(img, "Weather", "No data.")
 		return
 	}
 
-	this.DrawWeatherBox(img, 21, "NOW", fmt.Sprintf("%.1f°", this.Weather.CurrentTemp), this.Weather.CurrentIcon)
+	yellow := color.RGBA{255, 255, 0, 255}
+	aqua := color.RGBA{0, 255, 255, 255}
+
+	this.DrawWeatherBox(img, 21, "NOW", fmt.Sprintf("%.1f°", this.Weather.CurrentTemp), yellow, this.Weather.CurrentIcon)
 
 	forecast1Label := strings.ToUpper(this.Weather.Forecast1Weekday.String()[0:3])
 	forecast1BottomText := fmt.Sprintf("%d°/%d°", this.Weather.Forecast1HighTemp, this.Weather.Forecast1LowTemp)
@@ -305,38 +344,20 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
 	if this.Weather.Forecast1HighTemp == 0 {
 		forecast1BottomText = fmt.Sprintf("%d°", this.Weather.Forecast1LowTemp)
 	}
-	this.DrawWeatherBox(img, 63, forecast1Label, forecast1BottomText, this.Weather.Forecast1Icon)
+	this.DrawWeatherBox(img, 63, forecast1Label, forecast1BottomText, aqua, this.Weather.Forecast1Icon)
 
 	forecast2Label := strings.ToUpper(this.Weather.Forecast2Weekday.String()[0:3])
 	forecast2BottomText := fmt.Sprintf("%d°/%d°", this.Weather.Forecast2HighTemp, this.Weather.Forecast2LowTemp)
-	this.DrawWeatherBox(img, 105, forecast2Label, forecast2BottomText, this.Weather.Forecast2Icon)
+	this.DrawWeatherBox(img, 105, forecast2Label, forecast2BottomText, aqua, this.Weather.Forecast2Icon)
 }
 
-func (this *WeatherSlide) DrawWeatherBox(img *image.RGBA, centerX int, topText, bottomText string, icon *image.RGBA) {
+func (this *WeatherSlide) DrawWeatherBox(img *image.RGBA, centerX int, topText, bottomText string, topColor color.RGBA, icon *image.RGBA) {
 	white := color.RGBA{255, 255, 255, 255}
-	aqua := color.RGBA{0, 255, 255, 255}
-	WriteString(img, topText, white, ALIGN_CENTER, centerX, 0)
-	WriteString(img, bottomText, aqua, ALIGN_CENTER, centerX, 24)
+	WriteString(img, topText, topColor, ALIGN_CENTER, centerX, 0)
 	if icon != nil {
-		DrawImageWithColorTransform(img, icon, centerX, 7, aqua)
+		DrawImageWithColorTransform(img, icon, centerX-8, 7, white)
 	}
-}
-
-func (this *WeatherSlide) DrawTimeAxes(img *image.RGBA, originX, originY, width, height int, timeValues []time.Time) {
-	yellow := color.RGBA{255, 255, 0, 255}
-
-	DrawVertLine(img, yellow, originY-height, originY, originX-1)
-	DrawHorizLine(img, yellow, originX, originX+width-1, originY)
-
-	// Draw emphasis on noon/midnight
-	for i, t := range timeValues {
-		if t.Hour() == 0 {
-			DrawVertLine(img, yellow, originY, originY+2, originX+i)
-		}
-		if t.Hour() == 12 {
-			DrawVertLine(img, yellow, originY, originY+1, originX+i)
-		}
-	}
+	WriteString(img, bottomText, white, ALIGN_CENTER, centerX, 24)
 }
 
 // Data structures used by api.weather.gov JSON feed
