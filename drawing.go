@@ -91,7 +91,7 @@ func WriteStringBoxed(img *image.RGBA, str string, c color.RGBA, align Alignment
 	}
 
 	// Draw the debug bounding box over the characters
-	if DEBUG_DRAW {
+	if *debugDraw {
 		aqua := color.RGBA{0, 255, 255, 255}
 		if max > 0 {
 			// Display the cutoff point of the text

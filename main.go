@@ -17,14 +17,14 @@ var generateImagesFlag = flag.Bool("generate_images", false,
 	"If true, generates slide images instead of running as slideshow.")
 var debugLogFlag = flag.Bool("debug_log", false,
 	"If true, prints out debug-level log statements.")
+var debugHttp = flag.Bool("debug_http", false,
+	"If true, logs all HTTP responses to local directory.")
+var debugDraw = flag.Bool("debug_draw", false,
+	"If true, displays bounding boxes for drawn elements.")
 
 // Constants that generally don't need to be configured
 const SCREEN_WIDTH = 128
 const SCREEN_HEIGHT = 32
-
-// Control debug settings
-const DEBUG_DRAW = false
-const DEBUG_HTTP = false
 
 func main() {
 	// Init flags for use everywhere

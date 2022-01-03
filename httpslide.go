@@ -79,9 +79,10 @@ func (this *HttpHelper) Fetch() {
 	req, reqErr := this.BuildRequest()
 	if reqErr != nil {
 		log.WithFields(log.Fields{
+			"slide": this.Config.SlideId,
 			"req":   req,
 			"error": reqErr,
-		}).Warn("Request error in HttpHelper")
+		}).Warn("Request error in HttpHelper.")
 		this.LastFetchSuccess = false
 		return
 	}
@@ -89,10 +90,21 @@ func (this *HttpHelper) Fetch() {
 	res, resErr := this.Client.Do(req)
 	if resErr != nil {
 		log.WithFields(log.Fields{
+			"slide": this.Config.SlideId,
 			"req":   req,
 			"res":   res,
 			"error": resErr,
 		}).Warn("Response error in HttpHelper.")
+		this.LastFetchSuccess = false
+		return
+	}
+
+	if res.StatusCode != 200 {
+		log.WithFields(log.Fields{
+			"slide": this.Config.SlideId,
+			"req":   req,
+			"res":   res,
+		}).Warn("Got non-200 response code in HttpHelper.")
 		this.LastFetchSuccess = false
 		return
 	}
@@ -104,12 +116,13 @@ func (this *HttpHelper) Fetch() {
 	this.LastFetchSuccess = this.Config.ParseCallback(resBytes)
 
 	log.WithFields(log.Fields{
+		"slide":        this.Config.SlideId,
 		"req":          req,
 		"fetchSuccess": this.LastFetchSuccess,
 	}).Debug("Fetch complete.")
 
 	// Output debug file, maybe
-	if DEBUG_HTTP {
+	if *debugHttp {
 		outFile := fmt.Sprintf("debug/%d-%s.txt", time.Now().Unix(), this.Config.SlideId)
 		log.WithFields(log.Fields{
 			"req":     req,
