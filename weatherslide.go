@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"image/draw"
 	"image/png"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -110,38 +110,6 @@ func NewWeatherSlide() *WeatherSlide {
 		RequestUrlCallback: this.BuildForecastUrl,
 		ParseCallback:      this.ParseForecast,
 	})
-
-	// Preload all the weather icons
-	this.WeatherIcons = make(map[string]*image.RGBA)
-	for k := range WEATHER_API_ICON_MAP {
-		f := *weatherIconBaseDirFlag +
-			"icons/weather/" + WEATHER_API_ICON_MAP[k] + ".png"
-		// Open the file as binary stream
-		reader, err1 := os.Open(f)
-		if err1 != nil {
-			log.WithFields(log.Fields{
-				"file":  f,
-				"error": err1,
-			}).Warn("Could not open image.")
-			continue
-		}
-		defer reader.Close()
-		// Attempt to convert the image to image.Image
-		img, err2 := png.Decode(reader)
-		if err2 != nil {
-			log.WithFields(log.Fields{
-				"file":  f,
-				"error": err2,
-			}).Warn("Could not decode image.")
-			continue
-		}
-		// Then convert that to image.RGBA
-		b := img.Bounds()
-		imgRgba := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
-		draw.Draw(imgRgba, imgRgba.Bounds(), img, b.Min, draw.Src)
-		this.WeatherIcons[k] = imgRgba
-	}
-
 	return this
 }
 
@@ -306,23 +274,46 @@ func (this *WeatherSlide) GetIcon(url string) *image.RGBA {
 		}).Warn("Could not extract condition from icon URL.")
 		return nil
 	}
+
+	// Icon could be defined using one of two patterns. Find which one.
 	conditionWithTimeOfDay := m[1]
 	condition := m[2]
-	icon, ok := this.WeatherIcons[conditionWithTimeOfDay]
-	if ok {
-		return icon
+	icon, ok := WEATHER_API_ICON_MAP[conditionWithTimeOfDay]
+	if !ok {
+		icon, ok = WEATHER_API_ICON_MAP[condition]
+		if !ok {
+			log.WithFields(log.Fields{
+				"url":                    url,
+				"condition":              condition,
+				"conditionWithTimeOfDay": conditionWithTimeOfDay,
+			}).Warn("Conditions did not map to a known weather icon.")
+			return nil
+		}
 	}
 
-	icon, ok = this.WeatherIcons[condition]
-	if ok {
-		return icon
+	// Once the icon key is found, base64-decode it and store it.
+	base64Icon, ok := weatherIcons[icon]
+	if !ok {
+		log.WithFields(log.Fields{
+			"icon": icon,
+		}).Warn("Could not find weather icon.")
 	}
-	log.WithFields(log.Fields{
-		"url":                    url,
-		"condition":              condition,
-		"conditionWithTimeOfDay": conditionWithTimeOfDay,
-	}).Warn("Missing icon for weather condition.")
-	return nil
+	decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(base64Icon))
+	img, err := png.Decode(decoder)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"icon": icon,
+			"err":  err,
+		}).Warn("Could not decode weather icon.")
+		return nil
+	}
+
+	// Then convert from image.Image to image.RGBA
+	b := img.Bounds()
+	rgba := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(rgba, rgba.Bounds(), img, b.Min, draw.Src)
+	return rgba
+
 }
 
 func (this *WeatherSlide) Draw(img *image.RGBA) {
