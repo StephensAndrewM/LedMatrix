@@ -37,20 +37,16 @@ func (this *TimeSlide) IsEnabled() bool {
 }
 
 func (this *TimeSlide) Draw(img *image.RGBA) {
-	c0 := color.RGBA{0, 255, 255, 255}
-	c1 := color.RGBA{255, 255, 255, 255}
-	c2 := color.RGBA{255, 255, 0, 255}
+	white := color.RGBA{255, 255, 255, 255}
+	yellow := color.RGBA{255, 255, 0, 255}
 
 	t := time.Now()
-	l0 := "WEEKDAY"
-	if t.Weekday() == 0 || t.Weekday() == 6 {
-		l0 = "WEEKEND"
-		c0 = color.RGBA{0, 255, 0, 255}
-	}
-	l1 := strings.ToUpper(t.Format("Monday January 2"))
-	l2 := t.Format("3:04 PM")
+	d0 := strings.ToUpper(t.Format("Monday"))
+	d1 := strings.ToUpper(t.Format("January 2"))
+	t0 := t.Format("3:04 PM")
 
-	WriteString(img, l0, c0, ALIGN_CENTER, GetLeftOfCenterX(img), 2)
-	WriteString(img, l1, c1, ALIGN_CENTER, GetLeftOfCenterX(img), 14)
-	WriteString(img, l2, c2, ALIGN_CENTER, GetLeftOfCenterX(img), 23)
+	WriteString(img, d0, white, ALIGN_CENTER, 32, 7)
+	WriteString(img, d1, white, ALIGN_CENTER, 32, 17)
+
+	WriteString(img, t0, yellow, ALIGN_CENTER, 96, 12)
 }
