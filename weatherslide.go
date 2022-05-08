@@ -28,7 +28,7 @@ type WeatherSlide struct {
 }
 
 type WeatherData struct {
-	CurrentTemp float64
+	CurrentTemp int
 	CurrentIcon *image.RGBA
 
 	Forecast1Weekday  time.Weekday
@@ -173,7 +173,7 @@ func (this *WeatherSlide) ParseObservations(respBytes []byte) bool {
 	}
 
 	tempInCelsius := float64(respData.Temperature.Value)
-	this.Weather.CurrentTemp = (tempInCelsius * (9 / 5)) + 32.0
+	this.Weather.CurrentTemp = int((tempInCelsius * (9 / 5)) + 32.0)
 	this.Weather.CurrentIcon = this.GetIcon(respData.Icon)
 	return true
 }
@@ -201,8 +201,8 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 		panic(err)
 	}
 
-	// If after 3 PM, show nightly forecast
-	if time.Now().Hour() < 15 {
+	// If after 6 PM, show nightly forecast
+	if time.Now().Hour() < 18 {
 		fTodayEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 18, 0, 0, 0, tz)
 		fToday := this.GetForecastWithEndTime(fTodayEndTime, respData.Periods)
 		if fToday == nil {
@@ -326,7 +326,7 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
 	yellow := color.RGBA{255, 255, 0, 255}
 	aqua := color.RGBA{0, 255, 255, 255}
 
-	this.DrawWeatherBox(img, 21, "NOW", fmt.Sprintf("%.1f°", this.Weather.CurrentTemp), yellow, this.Weather.CurrentIcon)
+	this.DrawWeatherBox(img, 21, "NOW", fmt.Sprintf("%d°", this.Weather.CurrentTemp), yellow, this.Weather.CurrentIcon)
 
 	forecast1Label := strings.ToUpper(this.Weather.Forecast1Weekday.String()[0:3])
 	forecast1BottomText := fmt.Sprintf("%d°/%d°", this.Weather.Forecast1HighTemp, this.Weather.Forecast1LowTemp)
@@ -342,13 +342,13 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
 	this.DrawWeatherBox(img, 105, forecast2Label, forecast2BottomText, aqua, this.Weather.Forecast2Icon)
 }
 
-func (this *WeatherSlide) DrawWeatherBox(img *image.RGBA, centerX int, topText, bottomText string, topColor color.RGBA, icon *image.RGBA) {
+func (this *WeatherSlide) DrawWeatherBox(img *image.RGBA, centerX int, dateText, temperatureText string, dateColor color.RGBA, icon *image.RGBA) {
 	white := color.RGBA{255, 255, 255, 255}
-	WriteString(img, topText, topColor, ALIGN_CENTER, centerX, 0)
+	WriteString(img, temperatureText, white, ALIGN_CENTER, centerX, 0)
 	if icon != nil {
 		DrawImageWithColorTransform(img, icon, centerX-8, 7, white)
 	}
-	WriteString(img, bottomText, white, ALIGN_CENTER, centerX, 24)
+	WriteString(img, dateText, dateColor, ALIGN_CENTER, centerX, 24)
 }
 
 // Data structures used by api.weather.gov JSON feed
