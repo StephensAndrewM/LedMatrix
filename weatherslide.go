@@ -201,7 +201,15 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 		panic(err)
 	}
 
-	// If after 6 PM, show nightly forecast
+	fTonightEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 6, 0, 0, 0, tz)
+	fTonight := this.GetForecastWithEndTime(fTonightEndTime, respData.Periods)
+	if fTonight == nil {
+		log.WithFields(log.Fields{
+			"fTonightEndTime": fTonightEndTime,
+		}).Warn("Could not find forecast with expected end time.")
+		return false
+	}
+	// If before 6 PM, show forecast for full day. Otherwise only use nightly forecast.
 	if time.Now().Hour() < 18 {
 		fTodayEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 18, 0, 0, 0, tz)
 		fToday := this.GetForecastWithEndTime(fTodayEndTime, respData.Periods)
@@ -212,23 +220,13 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 			return false
 		}
 		this.Weather.Forecast1HighTemp = fToday.Temperature
-
+		this.Weather.Forecast1Icon = this.GetIcon(fToday.Icon)
 	} else {
 		this.Weather.Forecast1HighTemp = 0
-
+		this.Weather.Forecast1Icon = this.GetIcon(fTonight.Icon)
 	}
-	fTonightEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 6, 0, 0, 0, tz)
-	fTonight := this.GetForecastWithEndTime(fTonightEndTime, respData.Periods)
-	if fTonight == nil {
-		log.WithFields(log.Fields{
-			"fTonightEndTime": fTonightEndTime,
-		}).Warn("Could not find forecast with expected end time.")
-		return false
-	}
-
 	this.Weather.Forecast1Weekday = time.Now().Weekday()
 	this.Weather.Forecast1LowTemp = fTonight.Temperature
-	this.Weather.Forecast1Icon = this.GetIcon(fTonight.Icon)
 
 	fTomorrowEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 18, 0, 0, 0, tz)
 	fTomorrow := this.GetForecastWithEndTime(fTomorrowEndTime, respData.Periods)
