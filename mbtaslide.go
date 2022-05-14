@@ -23,7 +23,7 @@ type MbtaSlide struct {
 }
 
 // Station names - used in constructor
-// This is not an exhaustive list, just some easy ones
+// sl.is not an exhaustive list, just some easy ones
 const MBTA_STATION_ID_DAVIS = "place-davis"
 const MBTA_STATION_ID_PARK = "place-pktrm"
 const MBTA_STATION_ID_KENDALL = "place-knncl"
@@ -47,7 +47,7 @@ var MBTA_STATION_NAME_MAP = map[string]string{
 }
 
 func NewMbtaSlide(stationId string) *MbtaSlide {
-	this := new(MbtaSlide)
+	sl := new(MbtaSlide)
 	name, ok := MBTA_STATION_NAME_MAP[stationId]
 	if !ok {
 		log.WithFields(log.Fields{
@@ -55,40 +55,40 @@ func NewMbtaSlide(stationId string) *MbtaSlide {
 		}).Warn("Could not find station name.")
 		name = "?????"
 	}
-	this.StationName = name
+	sl.StationName = name
 
-	this.HttpHelper = NewHttpHelper(HttpConfig{
+	sl.HttpHelper = NewHttpHelper(HttpConfig{
 		SlideId:         "MBTASlide-" + stationId,
 		RefreshInterval: 1 * time.Minute,
 		RequestUrl: fmt.Sprintf("https://api-v3.mbta.com/predictions"+
 			"?include=route,trip&filter[stop]=%s", stationId),
-		ParseCallback: this.Parse,
+		ParseCallback: sl.Parse,
 	})
 
-	return this
+	return sl
 }
 
-func (this *MbtaSlide) Initialize() {
-	this.HttpHelper.StartLoop()
+func (sl *MbtaSlide) Initialize() {
+	sl.HttpHelper.StartLoop()
 }
 
-func (this *MbtaSlide) Terminate() {
-	this.HttpHelper.StopLoop()
+func (sl *MbtaSlide) Terminate() {
+	sl.HttpHelper.StopLoop()
 }
 
-func (this *MbtaSlide) StartDraw(d Display) {
-	this.RedrawTicker = DrawEverySecond(d, this.Draw)
+func (sl *MbtaSlide) StartDraw(d Display) {
+	sl.RedrawTicker = DrawEverySecond(d, sl.Draw)
 }
 
-func (this *MbtaSlide) StopDraw() {
-	this.RedrawTicker.Stop()
+func (sl *MbtaSlide) StopDraw() {
+	sl.RedrawTicker.Stop()
 }
 
-func (this *MbtaSlide) IsEnabled() bool {
+func (sl *MbtaSlide) IsEnabled() bool {
 	return true // Always enabled
 }
 
-func (this *MbtaSlide) Parse(respBytes []byte) bool {
+func (sl *MbtaSlide) Parse(respBytes []byte) bool {
 	// Parse response to JSON
 	var resp MbtaApiResponse
 	jsonErr := json.Unmarshal(respBytes, &resp)
@@ -100,18 +100,18 @@ func (this *MbtaSlide) Parse(respBytes []byte) bool {
 	}
 
 	// We need to resolve a trip ID into structured information
-	routeByTripId := this.BuildTripIdToRouteMap(resp.Included)
+	routeByTripId := sl.BuildTripIdToRouteMap(resp.Included)
 
 	// Create a mapping of predicted times by route
-	predictionsByRoute := this.BuildRouteToPredictionsMap(resp.Data, routeByTripId)
+	predictionsByRoute := sl.BuildRouteToPredictionsMap(resp.Data, routeByTripId)
 
 	// Flatten the predictions into what will be displayed
-	this.Predictions = this.FlattenPredictions(routeByTripId, predictionsByRoute)
+	sl.Predictions = sl.FlattenPredictions(routeByTripId, predictionsByRoute)
 
 	return true
 }
 
-func (this *MbtaSlide) BuildTripIdToRouteMap(resources []MbtaApiResource) map[string]MbtaRoute {
+func (sl *MbtaSlide) BuildTripIdToRouteMap(resources []MbtaApiResource) map[string]MbtaRoute {
 	// Iterate through all provided "route" resources, building a mapping
 	// of route ID (string) to structure route object (with name and color).
 	// These route objects do *not* have the destination property set.
@@ -138,7 +138,7 @@ func (this *MbtaSlide) BuildTripIdToRouteMap(resources []MbtaApiResource) map[st
 		}
 	}
 
-	// Iterate again, looking at "trip" resources instead. This resource has
+	// Iterate again, looking at "trip" resources instead. sl.resource has
 	// the headsign attribute that we use to set Destination on the route,
 	// and the ID that we use as the map's key.
 	m := make(map[string]MbtaRoute)
@@ -162,7 +162,7 @@ func (this *MbtaSlide) BuildTripIdToRouteMap(resources []MbtaApiResource) map[st
 	return m
 }
 
-func (this *MbtaSlide) BuildRouteToPredictionsMap(data []MbtaApiResource, routeByTripId map[string]MbtaRoute) map[string][]time.Time {
+func (sl *MbtaSlide) BuildRouteToPredictionsMap(data []MbtaApiResource, routeByTripId map[string]MbtaRoute) map[string][]time.Time {
 	predictions := make(map[string][]time.Time)
 	for _, r := range data {
 		if r.Type == "prediction" {
@@ -188,18 +188,18 @@ func (this *MbtaSlide) BuildRouteToPredictionsMap(data []MbtaApiResource, routeB
 				continue
 			}
 			// Turn the route and destination struct into a string and store
-			k := this.RouteToString(tr)
+			k := sl.RouteToString(tr)
 			predictions[k] = append(predictions[k], t)
 		}
 	}
 	return predictions
 }
 
-func (this *MbtaSlide) FlattenPredictions(routeByTripId map[string]MbtaRoute, predictionsByRoute map[string][]time.Time) []MbtaPrediction {
+func (sl *MbtaSlide) FlattenPredictions(routeByTripId map[string]MbtaRoute, predictionsByRoute map[string][]time.Time) []MbtaPrediction {
 	// Create a lookup map of route string -> object
 	routeLookup := make(map[string]MbtaRoute)
 	for _, v := range routeByTripId {
-		routeLookup[this.RouteToString(v)] = v
+		routeLookup[sl.RouteToString(v)] = v
 	}
 
 	// Create a list of objects containing route objects and times
@@ -229,12 +229,12 @@ func (this *MbtaSlide) FlattenPredictions(routeByTripId map[string]MbtaRoute, pr
 }
 
 // Squash a MbtaRoute object to a simple string representation
-func (this *MbtaSlide) RouteToString(r MbtaRoute) string {
-	return fmt.Sprintf("%s/%s/%s/%s", r.Type, r.Color, r.Id, r.Destination)
+func (sl *MbtaSlide) RouteToString(r MbtaRoute) string {
+	return fmt.Sprintf("%d/%s/%s/%s", r.Type, r.Color, r.Id, r.Destination)
 }
 
 // Finds the earliest time in an unsorted array
-func (this *MbtaSlide) GetMinTime(t []time.Time) time.Time {
+func (sl *MbtaSlide) GetMinTime(t []time.Time) time.Time {
 	sort.Slice(t, func(i, j int) bool {
 		return t[i].Before(t[j])
 	})
@@ -242,11 +242,11 @@ func (this *MbtaSlide) GetMinTime(t []time.Time) time.Time {
 }
 
 // For all the times stored in all prediction objects, remove those in the past
-func (this *MbtaSlide) FilterTimesInPast(all []MbtaPrediction) (ret []MbtaPrediction) {
+func (sl *MbtaSlide) FilterTimesInPast(all []MbtaPrediction) (ret []MbtaPrediction) {
 	for _, p := range all {
 		var times []time.Time
 		for _, t := range p.Time {
-			if t.Sub(time.Now()) >= 0 {
+			if time.Since(t) >= 0 {
 				times = append(times, t)
 			}
 		}
@@ -258,8 +258,8 @@ func (this *MbtaSlide) FilterTimesInPast(all []MbtaPrediction) (ret []MbtaPredic
 	return
 }
 
-func (this *MbtaSlide) Draw(img *image.RGBA) {
-	if !this.HttpHelper.LastFetchSuccess {
+func (sl *MbtaSlide) Draw(img *image.RGBA) {
+	if !sl.HttpHelper.LastFetchSuccess {
 		DrawError(img, "MBTA Trains", "No data.")
 		return
 	}
@@ -269,18 +269,18 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
 	busColor := color.RGBA{255, 255, 0, 255}    // yellow
 	timeColor := color.RGBA{0, 255, 255, 255}   // aqua
 
-	filteredPredictions := this.FilterTimesInPast(this.Predictions)
+	filteredPredictions := sl.FilterTimesInPast(sl.Predictions)
 
 	if len(filteredPredictions) == 0 {
 		DrawError(img, "MBTA Trains", "No predictions.")
 		return
 	}
 
-	WriteString(img, this.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 0)
+	WriteString(img, sl.StationName, titleColor, ALIGN_CENTER, GetLeftOfCenterX(img), 0)
 
 	// Resort prediction time sets based on current time
 	sort.Slice(filteredPredictions, func(i, j int) bool {
-		return this.GetMinTime(filteredPredictions[i].Time).Before(this.GetMinTime(filteredPredictions[j].Time))
+		return sl.GetMinTime(filteredPredictions[i].Time).Before(sl.GetMinTime(filteredPredictions[j].Time))
 	})
 
 	// TODO rotate through destinations if there are more than three
@@ -295,7 +295,7 @@ func (this *MbtaSlide) Draw(img *image.RGBA) {
 		// Loop through first three predictions, or all, whichever is less
 		for j := 0; j < min(len(p.Time), 3); j++ {
 			t := p.Time[j]
-			est := t.Sub(time.Now())
+			est := time.Until(t)
 			estMin := int(math.Floor(est.Minutes()))
 			estStrs = append(estStrs, strconv.Itoa(estMin))
 		}

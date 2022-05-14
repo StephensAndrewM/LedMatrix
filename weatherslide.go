@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -41,9 +40,6 @@ type WeatherData struct {
 	Forecast2HighTemp int
 	Forecast2LowTemp  int
 }
-
-var weatherIconBaseDirFlag = flag.String("weather_icon_base_dir", "",
-	"If specified, base directory to load weather icons from.")
 
 // Latitude/longitude values for API requests
 // Obtained using https://api.weather.gov/points/42.3643,-71.0854
@@ -97,53 +93,53 @@ var WEATHER_API_ICON_MAP = map[string]string{
 }
 
 func NewWeatherSlide() *WeatherSlide {
-	this := new(WeatherSlide)
-	this.ObservationsHttpHelper = NewHttpHelper(HttpConfig{
+	sl := new(WeatherSlide)
+	sl.ObservationsHttpHelper = NewHttpHelper(HttpConfig{
 		SlideId:            "WeatherSlide-Observations",
 		RefreshInterval:    5 * time.Minute,
-		RequestUrlCallback: this.BuildObservationsUrl,
-		ParseCallback:      this.ParseObservations,
+		RequestUrlCallback: sl.BuildObservationsUrl,
+		ParseCallback:      sl.ParseObservations,
 	})
-	this.ForecastHttpHelper = NewHttpHelper(HttpConfig{
+	sl.ForecastHttpHelper = NewHttpHelper(HttpConfig{
 		SlideId:            "WeatherSlide-Forecast",
 		RefreshInterval:    30 * time.Minute,
-		RequestUrlCallback: this.BuildForecastUrl,
-		ParseCallback:      this.ParseForecast,
+		RequestUrlCallback: sl.BuildForecastUrl,
+		ParseCallback:      sl.ParseForecast,
 	})
-	return this
+	return sl
 }
 
-func (this *WeatherSlide) Initialize() {
-	this.ObservationsHttpHelper.StartLoop()
-	this.ForecastHttpHelper.StartLoop()
+func (sl *WeatherSlide) Initialize() {
+	sl.ObservationsHttpHelper.StartLoop()
+	sl.ForecastHttpHelper.StartLoop()
 }
 
-func (this *WeatherSlide) Terminate() {
-	this.ObservationsHttpHelper.StopLoop()
-	this.ForecastHttpHelper.StopLoop()
+func (sl *WeatherSlide) Terminate() {
+	sl.ObservationsHttpHelper.StopLoop()
+	sl.ForecastHttpHelper.StopLoop()
 }
 
-func (this *WeatherSlide) StartDraw(d Display) {
-	this.RedrawTicker = DrawEverySecond(d, this.Draw)
+func (sl *WeatherSlide) StartDraw(d Display) {
+	sl.RedrawTicker = DrawEverySecond(d, sl.Draw)
 }
 
-func (this *WeatherSlide) StopDraw() {
-	this.RedrawTicker.Stop()
+func (sl *WeatherSlide) StopDraw() {
+	sl.RedrawTicker.Stop()
 }
 
-func (this *WeatherSlide) IsEnabled() bool {
+func (sl *WeatherSlide) IsEnabled() bool {
 	return true // Always enabled
 }
 
-func (this *WeatherSlide) BuildObservationsUrl() (*http.Request, error) {
-	return this.BuildUrl(fmt.Sprintf("https://api.weather.gov/stations/%s/observations/latest", NWS_STATION))
+func (sl *WeatherSlide) BuildObservationsUrl() (*http.Request, error) {
+	return sl.BuildUrl(fmt.Sprintf("https://api.weather.gov/stations/%s/observations/latest", NWS_STATION))
 }
 
-func (this *WeatherSlide) BuildForecastUrl() (*http.Request, error) {
-	return this.BuildUrl(fmt.Sprintf("https://api.weather.gov/gridpoints/%s/forecast", NWS_OFFICE))
+func (sl *WeatherSlide) BuildForecastUrl() (*http.Request, error) {
+	return sl.BuildUrl(fmt.Sprintf("https://api.weather.gov/gridpoints/%s/forecast", NWS_OFFICE))
 }
 
-func (this *WeatherSlide) BuildUrl(url string) (*http.Request, error) {
+func (sl *WeatherSlide) BuildUrl(url string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -154,7 +150,7 @@ func (this *WeatherSlide) BuildUrl(url string) (*http.Request, error) {
 	return req, nil
 }
 
-func (this *WeatherSlide) ParseObservations(respBytes []byte) bool {
+func (sl *WeatherSlide) ParseObservations(respBytes []byte) bool {
 	var respData WeatherGovObservations
 	err := json.Unmarshal(respBytes, &respData)
 	if err != nil {
@@ -165,7 +161,7 @@ func (this *WeatherSlide) ParseObservations(respBytes []byte) bool {
 	}
 
 	t, err := time.Parse(time.RFC3339, respData.Timestamp)
-	if err != nil || time.Now().Sub(t) > (6*time.Hour) {
+	if err != nil || time.Since(t) > (6*time.Hour) {
 		log.WithFields(log.Fields{
 			"Timestamp": respData.Timestamp,
 		}).Warn("Invalid last update time for observations.")
@@ -173,12 +169,12 @@ func (this *WeatherSlide) ParseObservations(respBytes []byte) bool {
 	}
 
 	tempInCelsius := float64(respData.Temperature.Value)
-	this.Weather.CurrentTemp = int((tempInCelsius * (9 / 5)) + 32.0)
-	this.Weather.CurrentIcon = this.GetIcon(respData.Icon)
+	sl.Weather.CurrentTemp = int((tempInCelsius * (9 / 5.0)) + 32.0)
+	sl.Weather.CurrentIcon = sl.GetIcon(respData.Icon)
 	return true
 }
 
-func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
+func (sl *WeatherSlide) ParseForecast(respBytes []byte) bool {
 	var respData WeatherGovForecast
 	err := json.Unmarshal(respBytes, &respData)
 	if err != nil {
@@ -189,7 +185,7 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 	}
 
 	t, err := time.Parse(time.RFC3339, respData.UpdateTime)
-	if err != nil || time.Now().Sub(t) > (6*time.Hour) {
+	if err != nil || time.Since(t) > (6*time.Hour) {
 		log.WithFields(log.Fields{
 			"UpdateTime": respData.UpdateTime,
 		}).Warn("Invalid last update time for forecast.")
@@ -202,7 +198,7 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 	}
 
 	fTonightEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 6, 0, 0, 0, tz)
-	fTonight := this.GetForecastWithEndTime(fTonightEndTime, respData.Periods)
+	fTonight := sl.GetForecastWithEndTime(fTonightEndTime, respData.Periods)
 	if fTonight == nil {
 		log.WithFields(log.Fields{
 			"fTonightEndTime": fTonightEndTime,
@@ -212,24 +208,24 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 	// If before 6 PM, show forecast for full day. Otherwise only use nightly forecast.
 	if time.Now().Hour() < 18 {
 		fTodayEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 18, 0, 0, 0, tz)
-		fToday := this.GetForecastWithEndTime(fTodayEndTime, respData.Periods)
+		fToday := sl.GetForecastWithEndTime(fTodayEndTime, respData.Periods)
 		if fToday == nil {
 			log.WithFields(log.Fields{
 				"fTodayEndTime": fTodayEndTime,
 			}).Warn("Could not find forecast with expected end time.")
 			return false
 		}
-		this.Weather.Forecast1HighTemp = fToday.Temperature
-		this.Weather.Forecast1Icon = this.GetIcon(fToday.Icon)
+		sl.Weather.Forecast1HighTemp = fToday.Temperature
+		sl.Weather.Forecast1Icon = sl.GetIcon(fToday.Icon)
 	} else {
-		this.Weather.Forecast1HighTemp = 0
-		this.Weather.Forecast1Icon = this.GetIcon(fTonight.Icon)
+		sl.Weather.Forecast1HighTemp = 0
+		sl.Weather.Forecast1Icon = sl.GetIcon(fTonight.Icon)
 	}
-	this.Weather.Forecast1Weekday = time.Now().Weekday()
-	this.Weather.Forecast1LowTemp = fTonight.Temperature
+	sl.Weather.Forecast1Weekday = time.Now().Weekday()
+	sl.Weather.Forecast1LowTemp = fTonight.Temperature
 
 	fTomorrowEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 18, 0, 0, 0, tz)
-	fTomorrow := this.GetForecastWithEndTime(fTomorrowEndTime, respData.Periods)
+	fTomorrow := sl.GetForecastWithEndTime(fTomorrowEndTime, respData.Periods)
 	if fTomorrow == nil {
 		log.WithFields(log.Fields{
 			"fTomorrowEndTime": fTomorrowEndTime,
@@ -237,7 +233,7 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 		return false
 	}
 	fTomorrowNightEndTime := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+2, 6, 0, 0, 0, tz)
-	fTomorrowNight := this.GetForecastWithEndTime(fTomorrowNightEndTime, respData.Periods)
+	fTomorrowNight := sl.GetForecastWithEndTime(fTomorrowNightEndTime, respData.Periods)
 	if fTomorrowNight == nil {
 		log.WithFields(log.Fields{
 			"fTomorrowNightEndTime": fTomorrowNightEndTime,
@@ -245,15 +241,15 @@ func (this *WeatherSlide) ParseForecast(respBytes []byte) bool {
 		return false
 	}
 
-	this.Weather.Forecast2Weekday = time.Now().Add(time.Hour * 24).Weekday()
-	this.Weather.Forecast2HighTemp = fTomorrow.Temperature
-	this.Weather.Forecast2LowTemp = fTomorrowNight.Temperature
-	this.Weather.Forecast2Icon = this.GetIcon(fTomorrow.Icon)
+	sl.Weather.Forecast2Weekday = time.Now().Add(time.Hour * 24).Weekday()
+	sl.Weather.Forecast2HighTemp = fTomorrow.Temperature
+	sl.Weather.Forecast2LowTemp = fTomorrowNight.Temperature
+	sl.Weather.Forecast2Icon = sl.GetIcon(fTomorrow.Icon)
 
 	return true
 }
 
-func (this *WeatherSlide) GetForecastWithEndTime(expectedEndTime time.Time, periods []WeatherGovForecastPeriod) *WeatherGovForecastPeriod {
+func (sl *WeatherSlide) GetForecastWithEndTime(expectedEndTime time.Time, periods []WeatherGovForecastPeriod) *WeatherGovForecastPeriod {
 	for _, period := range periods {
 		t, _ := time.Parse(time.RFC3339, period.EndTime)
 		if t.Equal(expectedEndTime) {
@@ -263,8 +259,8 @@ func (this *WeatherSlide) GetForecastWithEndTime(expectedEndTime time.Time, peri
 	return nil
 }
 
-func (this *WeatherSlide) GetIcon(url string) *image.RGBA {
-	r := regexp.MustCompile("\\/icons\\/land\\/([^\\/]+\\/([a-z_]+))")
+func (sl *WeatherSlide) GetIcon(url string) *image.RGBA {
+	r := regexp.MustCompile(`\/icons\/land\/([^\/]+\/([a-z_]+))`)
 	m := r.FindStringSubmatch(url)
 	if len(m) < 3 || m[1] == "" || m[2] == "" {
 		log.WithFields(log.Fields{
@@ -314,9 +310,9 @@ func (this *WeatherSlide) GetIcon(url string) *image.RGBA {
 
 }
 
-func (this *WeatherSlide) Draw(img *image.RGBA) {
+func (sl *WeatherSlide) Draw(img *image.RGBA) {
 	// Stop immediately if we have errors
-	if !this.ObservationsHttpHelper.LastFetchSuccess || !this.ForecastHttpHelper.LastFetchSuccess {
+	if !sl.ObservationsHttpHelper.LastFetchSuccess || !sl.ForecastHttpHelper.LastFetchSuccess {
 		DrawError(img, "Weather", "No data.")
 		return
 	}
@@ -324,23 +320,23 @@ func (this *WeatherSlide) Draw(img *image.RGBA) {
 	yellow := color.RGBA{255, 255, 0, 255}
 	aqua := color.RGBA{0, 255, 255, 255}
 
-	this.DrawWeatherBox(img, 21, "NOW", fmt.Sprintf("%d°", this.Weather.CurrentTemp), yellow, this.Weather.CurrentIcon)
+	sl.DrawWeatherBox(img, 21, "NOW", fmt.Sprintf("%d°", sl.Weather.CurrentTemp), yellow, sl.Weather.CurrentIcon)
 
-	forecast1Label := strings.ToUpper(this.Weather.Forecast1Weekday.String()[0:3])
-	forecast1BottomText := fmt.Sprintf("%d°/%d°", this.Weather.Forecast1HighTemp, this.Weather.Forecast1LowTemp)
+	forecast1Label := strings.ToUpper(sl.Weather.Forecast1Weekday.String()[0:3])
+	forecast1BottomText := fmt.Sprintf("%d°/%d°", sl.Weather.Forecast1HighTemp, sl.Weather.Forecast1LowTemp)
 	// If high temp is zero, that means it wasn't set and we should only show nightly forecast.
 	// Yes technically there's a bug where an actual zero-degree day wouldn't show up correctly.
-	if this.Weather.Forecast1HighTemp == 0 {
-		forecast1BottomText = fmt.Sprintf("%d°", this.Weather.Forecast1LowTemp)
+	if sl.Weather.Forecast1HighTemp == 0 {
+		forecast1BottomText = fmt.Sprintf("%d°", sl.Weather.Forecast1LowTemp)
 	}
-	this.DrawWeatherBox(img, 63, forecast1Label, forecast1BottomText, aqua, this.Weather.Forecast1Icon)
+	sl.DrawWeatherBox(img, 63, forecast1Label, forecast1BottomText, aqua, sl.Weather.Forecast1Icon)
 
-	forecast2Label := strings.ToUpper(this.Weather.Forecast2Weekday.String()[0:3])
-	forecast2BottomText := fmt.Sprintf("%d°/%d°", this.Weather.Forecast2HighTemp, this.Weather.Forecast2LowTemp)
-	this.DrawWeatherBox(img, 105, forecast2Label, forecast2BottomText, aqua, this.Weather.Forecast2Icon)
+	forecast2Label := strings.ToUpper(sl.Weather.Forecast2Weekday.String()[0:3])
+	forecast2BottomText := fmt.Sprintf("%d°/%d°", sl.Weather.Forecast2HighTemp, sl.Weather.Forecast2LowTemp)
+	sl.DrawWeatherBox(img, 105, forecast2Label, forecast2BottomText, aqua, sl.Weather.Forecast2Icon)
 }
 
-func (this *WeatherSlide) DrawWeatherBox(img *image.RGBA, centerX int, dateText, temperatureText string, dateColor color.RGBA, icon *image.RGBA) {
+func (sl *WeatherSlide) DrawWeatherBox(img *image.RGBA, centerX int, dateText, temperatureText string, dateColor color.RGBA, icon *image.RGBA) {
 	white := color.RGBA{255, 255, 255, 255}
 	WriteString(img, temperatureText, white, ALIGN_CENTER, centerX, 0)
 	if icon != nil {

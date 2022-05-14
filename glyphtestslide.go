@@ -22,36 +22,36 @@ func NewGlyphTestSlide(test GlyphTestType) *GlyphTestSlide {
 	return sl
 }
 
-func (this *GlyphTestSlide) Initialize() {
+func (sl *GlyphTestSlide) Initialize() {
 
 }
 
-func (this *GlyphTestSlide) Terminate() {
+func (sl *GlyphTestSlide) Terminate() {
 
 }
 
-func (this *GlyphTestSlide) StartDraw(d Display) {
-	DrawOnce(d, this.Draw)
+func (sl *GlyphTestSlide) StartDraw(d Display) {
+	DrawOnce(d, sl.Draw)
 }
 
-func (this *GlyphTestSlide) StopDraw() {
+func (sl *GlyphTestSlide) StopDraw() {
 
 }
 
-func (this *GlyphTestSlide) IsEnabled() bool {
+func (sl *GlyphTestSlide) IsEnabled() bool {
 	return true // Always enabled
 }
 
-func (this *GlyphTestSlide) Draw(img *image.RGBA) {
+func (sl *GlyphTestSlide) Draw(img *image.RGBA) {
 	midpoint := GetLeftOfCenterX(img)
 	c := color.RGBA{255, 255, 255, 255}
-	if this.Test == TEST_LETTERS {
+	if sl.Test == TEST_LETTERS {
 		WriteString(img, "THE QUICK BROWN FOX", c, ALIGN_CENTER, midpoint, 0)
 		WriteString(img, "JUMPS OVER THE LAZY DOG", c, ALIGN_CENTER, midpoint, 8)
 		WriteString(img, "the quick brown fox", c, ALIGN_CENTER, midpoint, 16)
 		WriteString(img, "jumps over the lazy dog", c, ALIGN_CENTER, midpoint, 24)
 
-	} else if this.Test == TEST_NUMSYM {
+	} else if sl.Test == TEST_NUMSYM {
 		WriteString(img, "1234567890", c, ALIGN_CENTER, midpoint, 4)
 		WriteString(img, "1/2 30° ❤ 6:30", c, ALIGN_CENTER, midpoint, 20)
 	}

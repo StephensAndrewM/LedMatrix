@@ -29,12 +29,12 @@ type FlightAndDay struct {
 }
 
 func NewFlightSlide(flights map[string]string) *FlightSlide {
-	this := new(FlightSlide)
-	this.HttpHelper = NewHttpHelper(HttpConfig{
+	sl := new(FlightSlide)
+	sl.HttpHelper = NewHttpHelper(HttpConfig{
 		SlideId:            "FlightSlide",
 		RefreshInterval:    10 * time.Minute,
-		RequestUrlCallback: this.BuildRequest,
-		ParseCallback:      this.Parse,
+		RequestUrlCallback: sl.BuildRequest,
+		ParseCallback:      sl.Parse,
 	})
 
 	// Copy the flights from the input into a struct (to be used later)
@@ -47,18 +47,18 @@ func NewFlightSlide(flights map[string]string) *FlightSlide {
 			}).Warn("Could not parse date input on flight slide.")
 			continue
 		}
-		this.TrackedFlights = append(this.TrackedFlights, FlightAndDay{
+		sl.TrackedFlights = append(sl.TrackedFlights, FlightAndDay{
 			Id:   id,
 			Date: dateStruct,
 		})
 	}
 
-	return this
+	return sl
 }
 
-func (this *FlightSlide) Initialize() {
+func (sl *FlightSlide) Initialize() {
 	// Get the flight to focus on
-	flight, ok := this.GetActiveFlight()
+	flight, ok := sl.GetActiveFlight()
 	log.WithFields(log.Fields{
 		"ok":     ok,
 		"flight": flight,
@@ -67,7 +67,7 @@ func (this *FlightSlide) Initialize() {
 	if !ok {
 		return
 	}
-	this.ActiveFlight = flight
+	sl.ActiveFlight = flight
 
 	// For development, always read data from file instead of live API call
 	/*f := "flight_sample.json"
@@ -79,35 +79,35 @@ func (this *FlightSlide) Initialize() {
 	      }).Warn("Could not open test JSON.")
 	      return
 	  }
-	  this.Parse(data)*/
+	  sl.Parse(data)*/
 
 	// Start fetching data
-	this.HttpHelper.StartLoop()
+	sl.HttpHelper.StartLoop()
 }
 
-func (this *FlightSlide) Terminate() {
+func (sl *FlightSlide) Terminate() {
 	// Fetching might already be stopped if flight is complete
-	this.HttpHelper.StopLoop()
+	sl.HttpHelper.StopLoop()
 }
 
-func (this *FlightSlide) StartDraw(d Display) {
-	this.RedrawTicker = DrawEverySecond(d, this.Draw)
+func (sl *FlightSlide) StartDraw(d Display) {
+	sl.RedrawTicker = DrawEverySecond(d, sl.Draw)
 }
 
-func (this *FlightSlide) StopDraw() {
-	this.RedrawTicker.Stop()
+func (sl *FlightSlide) StopDraw() {
+	sl.RedrawTicker.Stop()
 }
 
-func (this *FlightSlide) IsEnabled() bool {
+func (sl *FlightSlide) IsEnabled() bool {
 	// Slide should be enabled if there is an active flight
-	_, ok := this.GetActiveFlight()
+	_, ok := sl.GetActiveFlight()
 	return ok
 }
 
-func (this *FlightSlide) BuildRequest() (*http.Request, error) {
+func (sl *FlightSlide) BuildRequest() (*http.Request, error) {
 	url := fmt.Sprintf(
 		"http://flightxml.flightaware.com/json/FlightXML3/FlightInfoStatus?ident=%s&howMany=5",
-		this.ActiveFlight.Id)
+		sl.ActiveFlight.Id)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (this *FlightSlide) BuildRequest() (*http.Request, error) {
 	return req, nil
 }
 
-func (this *FlightSlide) Parse(respBytes []byte) bool {
+func (sl *FlightSlide) Parse(respBytes []byte) bool {
 	var respData FlightInfoStatusResponse
 	jsonErr := json.Unmarshal(respBytes, &respData)
 	if jsonErr != nil {
@@ -144,7 +144,7 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
 	// If no flight was found, nothing to display
 	if targetFlight == (FlightInfoStatus{}) {
 		log.Info("No matching flight found in response")
-		this.DisplayData = displayData
+		sl.DisplayData = displayData
 		return false
 	}
 
@@ -182,26 +182,26 @@ func (this *FlightSlide) Parse(respBytes []byte) bool {
 
 		// If the flight has arrived, stop requesting new data
 		log.Info("Flight has arrived, stopping HTTP fetcher")
-		this.HttpHelper.StopLoop()
+		sl.HttpHelper.StopLoop()
 	}
 	displayData.ArrivalDelay = time.Duration(targetFlight.ArrivalDelay) * time.Second
 
 	log.WithFields(log.Fields{"data": displayData}).Debug("Parsed display data")
 
-	this.DisplayData = displayData
+	sl.DisplayData = displayData
 	return true
 }
 
-func (this *FlightSlide) GetActiveFlight() (FlightAndDay, bool) {
-	for i := range this.TrackedFlights {
-		if this.TrackedFlights[i].Date == civil.DateOf(time.Now()) {
-			return this.TrackedFlights[i], true
+func (sl *FlightSlide) GetActiveFlight() (FlightAndDay, bool) {
+	for i := range sl.TrackedFlights {
+		if sl.TrackedFlights[i].Date == civil.DateOf(time.Now()) {
+			return sl.TrackedFlights[i], true
 		}
 	}
 	return FlightAndDay{}, false
 }
 
-func (this *FlightSlide) GetDurationString(d time.Duration) string {
+func (sl *FlightSlide) GetDurationString(d time.Duration) string {
 	if d.Hours() >= 1.0 {
 		dm := d.Round(time.Minute)
 		h := dm / time.Hour
@@ -212,13 +212,13 @@ func (this *FlightSlide) GetDurationString(d time.Duration) string {
 	return fmt.Sprintf("%d Min", int(d.Minutes()))
 }
 
-func (this *FlightSlide) Draw(img *image.RGBA) {
-	if !this.HttpHelper.LastFetchSuccess {
+func (sl *FlightSlide) Draw(img *image.RGBA) {
+	if !sl.HttpHelper.LastFetchSuccess {
 		DrawError(img, "Flight Status", "Connection error.")
 		return
 	}
 
-	if this.DisplayData == (FlightDisplayData{}) {
+	if sl.DisplayData == (FlightDisplayData{}) {
 		DrawError(img, "Flight Status", "No data.")
 		return
 	}
@@ -228,28 +228,28 @@ func (this *FlightSlide) Draw(img *image.RGBA) {
 	black := color.RGBA{0, 0, 0, 255}
 
 	// Show flight ID on top line
-	WriteString(img, this.DisplayData.Title, aqua, ALIGN_CENTER, 64, 0)
+	WriteString(img, sl.DisplayData.Title, aqua, ALIGN_CENTER, 64, 0)
 
 	// Draw origin/destination boxes on sides
-	ow := GetDisplayWidth(this.DisplayData.Origin)
+	ow := GetDisplayWidth(sl.DisplayData.Origin)
 	DrawBox(img, aqua, 0, 11, ow+4, 9)
-	WriteString(img, this.DisplayData.Origin, black, ALIGN_LEFT, 2, 12)
+	WriteString(img, sl.DisplayData.Origin, black, ALIGN_LEFT, 2, 12)
 
-	dw := GetDisplayWidth(this.DisplayData.Destination)
+	dw := GetDisplayWidth(sl.DisplayData.Destination)
 	DrawBox(img, aqua, 128-dw-4, 11, dw+4, 9)
-	WriteString(img, this.DisplayData.Destination, black, ALIGN_RIGHT, 125, 12)
+	WriteString(img, sl.DisplayData.Destination, black, ALIGN_RIGHT, 125, 12)
 
 	// Timing status
 	status := "On Time"
 	statusColor := color.RGBA{0, 255, 0, 255}
-	if !this.DisplayData.HasDeparted {
-		if this.DisplayData.DepartureDelay > 0 {
-			status = fmt.Sprintf("%s Late", this.GetDurationString(this.DisplayData.DepartureDelay))
+	if !sl.DisplayData.HasDeparted {
+		if sl.DisplayData.DepartureDelay > 0 {
+			status = fmt.Sprintf("%s Late", sl.GetDurationString(sl.DisplayData.DepartureDelay))
 			statusColor = color.RGBA{255, 255, 0, 255}
 		}
-	} else if !this.DisplayData.HasArrived {
-		if this.DisplayData.ArrivalDelay > 0 {
-			status = fmt.Sprintf("%s Late", this.GetDurationString(this.DisplayData.ArrivalDelay))
+	} else if !sl.DisplayData.HasArrived {
+		if sl.DisplayData.ArrivalDelay > 0 {
+			status = fmt.Sprintf("%s Late", sl.GetDurationString(sl.DisplayData.ArrivalDelay))
 			statusColor = color.RGBA{255, 255, 0, 255}
 		}
 	} else {
@@ -259,17 +259,17 @@ func (this *FlightSlide) Draw(img *image.RGBA) {
 
 	// Departure
 	depPrefix := "Dep. "
-	if !this.DisplayData.HasDeparted {
+	if !sl.DisplayData.HasDeparted {
 		depPrefix = "Est. Dep. "
 	}
-	WriteString(img, depPrefix+this.DisplayData.DepartureTime.Format("3:04 PM"), white, ALIGN_CENTER, 64, 16)
+	WriteString(img, depPrefix+sl.DisplayData.DepartureTime.Format("3:04 PM"), white, ALIGN_CENTER, 64, 16)
 
 	// Arrival
 	arrPrefix := "Arr. "
-	if !this.DisplayData.HasArrived {
+	if !sl.DisplayData.HasArrived {
 		arrPrefix = "Est. Arr. "
 	}
-	WriteString(img, arrPrefix+this.DisplayData.ArrivalTime.Format("3:04 PM"), white, ALIGN_CENTER, 64, 24)
+	WriteString(img, arrPrefix+sl.DisplayData.ArrivalTime.Format("3:04 PM"), white, ALIGN_CENTER, 64, 24)
 }
 
 // Data structures used by the FlightAware v3 API

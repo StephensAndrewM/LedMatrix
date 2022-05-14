@@ -47,28 +47,28 @@ func NewChristmasSlide() *ChristmasSlide {
 	return sl
 }
 
-func (this *ChristmasSlide) Initialize() {
+func (sl *ChristmasSlide) Initialize() {
 	t := time.Now()
-	this.XmasDate = time.Date(t.Year(), time.December, 25, 0, 0, 0, 0, time.Local)
+	sl.XmasDate = time.Date(t.Year(), time.December, 25, 0, 0, 0, 0, time.Local)
 }
 
-func (this *ChristmasSlide) Terminate() {
+func (sl *ChristmasSlide) Terminate() {
 
 }
 
-func (this *ChristmasSlide) StartDraw(d Display) {
-	this.RedrawTicker = DrawEverySecond(d, this.Draw)
+func (sl *ChristmasSlide) StartDraw(d Display) {
+	sl.RedrawTicker = DrawEverySecond(d, sl.Draw)
 }
 
-func (this *ChristmasSlide) StopDraw() {
-	this.RedrawTicker.Stop()
+func (sl *ChristmasSlide) StopDraw() {
+	sl.RedrawTicker.Stop()
 }
 
-func (this *ChristmasSlide) IsEnabled() bool {
-	return this.DaysUntil(this.XmasDate) >= 0 && this.DaysUntil(this.XmasDate) <= 30
+func (sl *ChristmasSlide) IsEnabled() bool {
+	return sl.DaysUntil(sl.XmasDate) >= 0 && sl.DaysUntil(sl.XmasDate) <= 30
 }
 
-func (this *ChristmasSlide) Draw(img *image.RGBA) {
+func (sl *ChristmasSlide) Draw(img *image.RGBA) {
 	red := color.RGBA{255, 0, 0, 255}
 	green := color.RGBA{0, 255, 0, 255}
 	darkgreen := color.RGBA{0, 128, 0, 255}
@@ -100,13 +100,13 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
 
 	// Draw some sparkles
 	for _, c := range lights {
-		x, y := this.GetRandomWithinTree()
+		x, y := sl.GetRandomWithinTree()
 		img.SetRGBA(treeOffsetX+x, treeOffsetY+y, c)
 	}
 
 	countdownOffsetX := 82
 	DrawEmptyBox(img, red, countdownOffsetX-9, 1, 18, 13)
-	days := this.DaysUntil(this.XmasDate)
+	days := sl.DaysUntil(sl.XmasDate)
 	if days < 0 {
 		days = 0
 	}
@@ -115,7 +115,7 @@ func (this *ChristmasSlide) Draw(img *image.RGBA) {
 	WriteString(img, "CHRISTMAS", green, ALIGN_CENTER, countdownOffsetX, 24)
 }
 
-func (this *ChristmasSlide) GetRandomWithinTree() (int, int) {
+func (sl *ChristmasSlide) GetRandomWithinTree() (int, int) {
 	for {
 		x := rand.Intn(21)
 		y := rand.Intn(24) + 1 // Don't select top line
@@ -125,7 +125,7 @@ func (this *ChristmasSlide) GetRandomWithinTree() (int, int) {
 	}
 }
 
-func (this *ChristmasSlide) DaysUntil(d time.Time) int {
+func (sl *ChristmasSlide) DaysUntil(d time.Time) int {
 	diff := time.Until(d).Hours() / 24.0
 	return int(math.Ceil(diff))
 }

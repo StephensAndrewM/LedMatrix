@@ -33,79 +33,79 @@ func NewHttpHelper(config HttpConfig) *HttpHelper {
 	return h
 }
 
-func (this *HttpHelper) StartLoop() {
-	if this.RefreshTicker != nil {
+func (h *HttpHelper) StartLoop() {
+	if h.RefreshTicker != nil {
 		log.WithFields(log.Fields{
-			"slide": this.Config.SlideId,
+			"slide": h.Config.SlideId,
 		}).Warn("Attempting to start HTTP loop when already started.")
 		return
 	}
 
 	// Set up period refresh of the data
-	this.RefreshTicker = time.NewTicker(this.Config.RefreshInterval)
+	h.RefreshTicker = time.NewTicker(h.Config.RefreshInterval)
 	go func() {
-		for range this.RefreshTicker.C {
-			this.Fetch()
+		for range h.RefreshTicker.C {
+			h.Fetch()
 		}
 	}()
 
 	// Get the data once now (synchronously)
-	this.Fetch()
+	h.Fetch()
 }
 
-func (this *HttpHelper) StopLoop() {
-	if this.RefreshTicker == nil {
+func (h *HttpHelper) StopLoop() {
+	if h.RefreshTicker == nil {
 		log.WithFields(log.Fields{
-			"slide": this.Config.SlideId,
+			"slide": h.Config.SlideId,
 		}).Warn("Attempting to stop HTTP loop when already stopped.")
 		return
 	}
-	this.RefreshTicker.Stop()
-	this.RefreshTicker = nil
+	h.RefreshTicker.Stop()
+	h.RefreshTicker = nil
 }
 
-func (this *HttpHelper) BuildRequest() (*http.Request, error) {
-	if this.Config.RequestUrlCallback != nil {
-		return this.Config.RequestUrlCallback()
+func (h *HttpHelper) BuildRequest() (*http.Request, error) {
+	if h.Config.RequestUrlCallback != nil {
+		return h.Config.RequestUrlCallback()
 	}
-	req, err := http.NewRequest("GET", this.Config.RequestUrl, nil)
+	req, err := http.NewRequest("GET", h.Config.RequestUrl, nil)
 	if err != nil {
 		return nil, err
 	}
 	return req, nil
 }
 
-func (this *HttpHelper) Fetch() {
-	req, reqErr := this.BuildRequest()
+func (h *HttpHelper) Fetch() {
+	req, reqErr := h.BuildRequest()
 	if reqErr != nil {
 		log.WithFields(log.Fields{
-			"slide": this.Config.SlideId,
+			"slide": h.Config.SlideId,
 			"req":   req,
 			"error": reqErr,
 		}).Warn("Request error in HttpHelper.")
-		this.LastFetchSuccess = false
+		h.LastFetchSuccess = false
 		return
 	}
 
-	res, resErr := this.Client.Do(req)
+	res, resErr := h.Client.Do(req)
 	if resErr != nil {
 		log.WithFields(log.Fields{
-			"slide": this.Config.SlideId,
+			"slide": h.Config.SlideId,
 			"req":   req,
 			"res":   res,
 			"error": resErr,
 		}).Warn("Response error in HttpHelper.")
-		this.LastFetchSuccess = false
+		h.LastFetchSuccess = false
 		return
 	}
 
 	if res.StatusCode != 200 {
 		log.WithFields(log.Fields{
-			"slide": this.Config.SlideId,
+			"slide": h.Config.SlideId,
 			"req":   req,
 			"res":   res,
 		}).Warn("Got non-200 response code in HttpHelper.")
-		this.LastFetchSuccess = false
+		h.LastFetchSuccess = false
 		return
 	}
 
@@ -113,21 +113,21 @@ func (this *HttpHelper) Fetch() {
 	resBuf.ReadFrom(res.Body)
 	resBytes := resBuf.Bytes()
 
-	this.LastFetchSuccess = this.Config.ParseCallback(resBytes)
+	h.LastFetchSuccess = h.Config.ParseCallback(resBytes)
 
 	log.WithFields(log.Fields{
-		"slide":        this.Config.SlideId,
+		"slide":        h.Config.SlideId,
 		"req":          req,
-		"fetchSuccess": this.LastFetchSuccess,
+		"fetchSuccess": h.LastFetchSuccess,
 	}).Debug("Fetch complete.")
 
 	// Output debug file, maybe
 	if *debugHttp {
-		outFile := fmt.Sprintf("debug/%d-%s.txt", time.Now().Unix(), this.Config.SlideId)
+		outFile := fmt.Sprintf("debug/%d-%s.txt", time.Now().Unix(), h.Config.SlideId)
 		log.WithFields(log.Fields{
 			"req":     req,
 			"outFile": outFile,
 		}).Debug("Logged HTTP response data.")
-		ioutil.WriteFile(outFile, resBytes, os.FileMode(770))
+		ioutil.WriteFile(outFile, resBytes, os.FileMode(0770))
 	}
 }

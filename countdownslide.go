@@ -14,35 +14,35 @@ type CountdownSlide struct {
 }
 
 func NewCountdownSlide(events []CountdownEvent) *CountdownSlide {
-	this := new(CountdownSlide)
-	this.events = events
-	return this
+	sl := new(CountdownSlide)
+	sl.events = events
+	return sl
 }
 
-func (this *CountdownSlide) Initialize() {
-
-}
-
-func (this *CountdownSlide) Terminate() {
+func (sl *CountdownSlide) Initialize() {
 
 }
 
-func (this *CountdownSlide) StartDraw(d Display) {
-	DrawOnce(d, this.Draw)
-}
-
-func (this *CountdownSlide) StopDraw() {
+func (sl *CountdownSlide) Terminate() {
 
 }
 
-func (this *CountdownSlide) IsEnabled() bool {
+func (sl *CountdownSlide) StartDraw(d Display) {
+	DrawOnce(d, sl.Draw)
+}
+
+func (sl *CountdownSlide) StopDraw() {
+
+}
+
+func (sl *CountdownSlide) IsEnabled() bool {
 	return true
 }
 
-func (this *CountdownSlide) Draw(img *image.RGBA) {
+func (sl *CountdownSlide) Draw(img *image.RGBA) {
 	today := civil.DateOf(time.Now())
 	var filteredEvents []CountdownEvent
-	for _, event := range this.events {
+	for _, event := range sl.events {
 		if event.date.Before(today) {
 			continue
 		}

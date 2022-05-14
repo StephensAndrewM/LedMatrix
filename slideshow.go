@@ -21,59 +21,59 @@ type Slideshow struct {
 }
 
 func NewSlideshow(d Display, config *Config) *Slideshow {
-	this := new(Slideshow)
-	this.Display = d
-	this.AdvanceInterval = config.AdvanceInterval
-	this.Slides = config.Slides
-	return this
+	s := new(Slideshow)
+	s.Display = d
+	s.AdvanceInterval = config.AdvanceInterval
+	s.Slides = config.Slides
+	return s
 }
 
-func (this *Slideshow) Start() {
-	this.Running = true
-	this.CurrentSlideId = -1
+func (s *Slideshow) Start() {
+	s.Running = true
+	s.CurrentSlideId = -1
 
 	// Display the welcome slide while loading
-	this.CurrentSlide = NewWelcomeSlide()
-	this.CurrentSlide.StartDraw(this.Display)
+	s.CurrentSlide = NewWelcomeSlide()
+	s.CurrentSlide.StartDraw(s.Display)
 
 	// Block until all slides have loaded data
-	this.WaitForReadiness()
+	s.WaitForReadiness()
 
 	log.Info("All slides reported readiness.")
 
 	// Then go to the first slide and run for real
-	this.Advance()
+	s.Advance()
 
 	// Increment the slide number periodically and start/stop drawing
-	this.AdvanceTicker = time.NewTicker(this.AdvanceInterval)
+	s.AdvanceTicker = time.NewTicker(s.AdvanceInterval)
 	go func() {
-		for range this.AdvanceTicker.C {
+		for range s.AdvanceTicker.C {
 			// Don't advance if the show has been manually frozen
-			if !this.Frozen {
-				this.Advance()
+			if !s.Frozen {
+				s.Advance()
 			}
 		}
 	}()
 }
 
-func (this *Slideshow) Advance() {
-	this.CurrentSlide.StopDraw()
+func (s *Slideshow) Advance() {
+	s.CurrentSlide.StopDraw()
 
 	for {
-		this.CurrentSlideId = (this.CurrentSlideId + 1) % len(this.Slides)
-		this.CurrentSlide = this.Slides[this.CurrentSlideId]
+		s.CurrentSlideId = (s.CurrentSlideId + 1) % len(s.Slides)
+		s.CurrentSlide = s.Slides[s.CurrentSlideId]
 		// If the slide is enabled, stop the loop
-		if this.CurrentSlide.IsEnabled() {
+		if s.CurrentSlide.IsEnabled() {
 			break
 		}
 		// Otherwise we loop until we find an enabled slide
-		// TODO make sure this doesn't get stuck if no slide is enabled
+		// This would probably get stuck if no slides are enabled at all
 	}
 
-	this.CurrentSlide.StartDraw(this.Display)
+	s.CurrentSlide.StartDraw(s.Display)
 }
 
-func (this *Slideshow) WaitForReadiness() {
+func (s *Slideshow) WaitForReadiness() {
 	// Don't initialize until internet is available
 	WaitForConnection()
 
@@ -82,32 +82,32 @@ func (this *Slideshow) WaitForReadiness() {
 
 	// Initialize all slides (attempt fetching initial content)
 	// This call on each slide blocks until request is complete
-	for _, s := range this.Slides {
-		s.Initialize()
+	for _, sl := range s.Slides {
+		sl.Initialize()
 	}
 }
 
-func (this *Slideshow) Stop() {
-	this.Running = false
-	this.CurrentSlide.StopDraw()
-	this.AdvanceTicker.Stop()
+func (s *Slideshow) Stop() {
+	s.Running = false
+	s.CurrentSlide.StopDraw()
+	s.AdvanceTicker.Stop()
 
 	// Stop any slide-level tickers
-	for _, s := range this.Slides {
-		s.Terminate()
+	for _, sl := range s.Slides {
+		sl.Terminate()
 	}
 
 	// Draw a blank image
-	this.Display.Redraw(NewBlankImage())
+	s.Display.Redraw(NewBlankImage())
 }
 
-func (this *Slideshow) Freeze() {
-	this.Frozen = true
+func (s *Slideshow) Freeze() {
+	s.Frozen = true
 }
 
-func (this *Slideshow) Unfreeze() {
-	this.Frozen = false
-	this.Advance()
+func (s *Slideshow) Unfreeze() {
+	s.Frozen = false
+	s.Advance()
 }
 
 // Checks for internet periodically, not returning until connected.

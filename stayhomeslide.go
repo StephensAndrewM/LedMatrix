@@ -18,34 +18,34 @@ func NewStayHomeSlide() *StayHomeSlide {
 	return sl
 }
 
-func (this *StayHomeSlide) Initialize() {
+func (sl *StayHomeSlide) Initialize() {
 
 }
 
-func (this *StayHomeSlide) Terminate() {
+func (sl *StayHomeSlide) Terminate() {
 
 }
 
-func (this *StayHomeSlide) StartDraw(d Display) {
-	DrawOnce(d, this.Draw)
+func (sl *StayHomeSlide) StartDraw(d Display) {
+	DrawOnce(d, sl.Draw)
 }
 
-func (this *StayHomeSlide) StopDraw() {
+func (sl *StayHomeSlide) StopDraw() {
 
 }
 
-func (this *StayHomeSlide) IsEnabled() bool {
-	// Only display this slide for interesting days.
-	return this.GetDayCount()%10 == 0 ||
-		this.GetDayCount()%25 == 0 ||
-		this.GetDayCount()%365 == 0
+func (sl *StayHomeSlide) IsEnabled() bool {
+	// Only display sl.slide for interesting days.
+	return sl.GetDayCount()%10 == 0 ||
+		sl.GetDayCount()%25 == 0 ||
+		sl.GetDayCount()%365 == 0
 }
 
-func (this *StayHomeSlide) Draw(img *image.RGBA) {
+func (sl *StayHomeSlide) Draw(img *image.RGBA) {
 	yellow := color.RGBA{255, 255, 0, 255}
 	red := color.RGBA{255, 0, 0, 255}
 
-	diff := this.GetDayCount()
+	diff := sl.GetDayCount()
 
 	if DISPLAY_TALLIES {
 
@@ -89,7 +89,7 @@ func (this *StayHomeSlide) Draw(img *image.RGBA) {
 	WriteString(img, "OFFICES CLOSED", red, ALIGN_CENTER, 64, 24)
 }
 
-func (this *StayHomeSlide) GetDayCount() int {
+func (sl *StayHomeSlide) GetDayCount() int {
 	start := time.Date(2020, time.March, 10, 0, 0, 0, 0, time.Local)
 	return int(math.Ceil(time.Since(start).Hours()/24.0)) - 1
 }

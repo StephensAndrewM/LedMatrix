@@ -15,7 +15,7 @@ import (
 )
 
 // How many days into the past to fetch and graph
-// This should be one more than the number of days to graph
+// sl.should be one more than the number of days to graph
 // since the graph looks at diffs between days.
 var HISTORICAL_COVID_DAYS = 29
 
@@ -29,46 +29,46 @@ type CovidSlide struct {
 }
 
 func NewCovidSlide() *CovidSlide {
-	this := new(CovidSlide)
-	this.UsData = NewDailyData("US")
-	this.MaData = NewDailyData("Mass")
-	this.AzData = NewDailyData("Ariz")
-	return this
+	sl := new(CovidSlide)
+	sl.UsData = NewDailyData("US")
+	sl.MaData = NewDailyData("Mass")
+	sl.AzData = NewDailyData("Ariz")
+	return sl
 }
 
-func (this *CovidSlide) Initialize() {
+func (sl *CovidSlide) Initialize() {
 	// Query for new data once immediately
-	this.FetchData()
+	sl.FetchData()
 
 	// Set up a period re-fetch of the data since it's sometimes late
-	this.FetchTicker = time.NewTicker(4 * time.Hour)
+	sl.FetchTicker = time.NewTicker(4 * time.Hour)
 	go func() {
-		for range this.FetchTicker.C {
-			this.FetchData()
+		for range sl.FetchTicker.C {
+			sl.FetchData()
 		}
 	}()
 }
 
-func (this *CovidSlide) Terminate() {
-	this.FetchTicker.Stop()
+func (sl *CovidSlide) Terminate() {
+	sl.FetchTicker.Stop()
 }
 
-func (this *CovidSlide) StartDraw(d Display) {
-	DrawOnce(d, this.Draw)
+func (sl *CovidSlide) StartDraw(d Display) {
+	DrawOnce(d, sl.Draw)
 }
 
-func (this *CovidSlide) StopDraw() {
+func (sl *CovidSlide) StopDraw() {
 
 }
 
-func (this *CovidSlide) IsEnabled() bool {
-	// TODO disable this if we all survive
+func (sl *CovidSlide) IsEnabled() bool {
+	// TODO disable sl.if we all survive
 	return true
 }
 
-func (this *CovidSlide) Draw(img *image.RGBA) {
+func (sl *CovidSlide) Draw(img *image.RGBA) {
 	// Stop immediately if we have too many errors
-	if this.LastFetchSuccessRatio < 0.5 {
+	if sl.LastFetchSuccessRatio < 0.5 {
 		DrawError(img, "Covid Cases", "Missing data.")
 		return
 	}
@@ -77,12 +77,12 @@ func (this *CovidSlide) Draw(img *image.RGBA) {
 	WriteString(img, "COVID-19 CASES", red, ALIGN_CENTER, 63, 0)
 
 	yellow := color.RGBA{255, 255, 0, 255}
-	DrawDataRow(img, 8, this.UsData, yellow)
-	DrawDataRow(img, 16, this.MaData, yellow)
-	DrawDataRow(img, 24, this.AzData, yellow)
+	DrawDataRow(img, 8, sl.UsData, yellow)
+	DrawDataRow(img, 16, sl.MaData, yellow)
+	DrawDataRow(img, 24, sl.AzData, yellow)
 }
 
-func (this *CovidSlide) FetchData() {
+func (sl *CovidSlide) FetchData() {
 	attempted := 0
 	successful := 0
 
@@ -90,11 +90,11 @@ func (this *CovidSlide) FetchData() {
 	for i := 1; i <= HISTORICAL_COVID_DAYS; i++ {
 		d := civil.DateOf(time.Now().AddDate(0, 0, -i))
 		// Check if fetch was successful based on data presence
-		_, ok := this.UsData.Totals[d]
+		_, ok := sl.UsData.Totals[d]
 		// Refresh if data is 1 or 2 days old, since it might not be stable
 		if !ok || i < 3 {
 			attempted++
-			if this.QueryForDate(d) {
+			if sl.QueryForDate(d) {
 				successful++
 			}
 		}
@@ -107,16 +107,16 @@ func (this *CovidSlide) FetchData() {
 		}).Debug("Some Covid queries failed.")
 	}
 
-	this.UsData = CalculateDiffs(this.UsData)
-	this.MaData = CalculateDiffs(this.MaData)
-	this.AzData = CalculateDiffs(this.AzData)
+	sl.UsData = CalculateDiffs(sl.UsData)
+	sl.MaData = CalculateDiffs(sl.MaData)
+	sl.AzData = CalculateDiffs(sl.AzData)
 
-	this.LastFetchSuccessRatio = float64(successful) / float64(attempted)
+	sl.LastFetchSuccessRatio = float64(successful) / float64(attempted)
 }
 
 // Can't use HttpHelper since the data doesn't change frequently
 // and we need to do many queries to draw the slide.
-func (this *CovidSlide) QueryForDate(d civil.Date) bool {
+func (sl *CovidSlide) QueryForDate(d civil.Date) bool {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/%02d-%02d-%04d.csv",
 		d.Month, d.Day, d.Year)
 
@@ -170,13 +170,13 @@ func (this *CovidSlide) QueryForDate(d civil.Date) bool {
 	}
 
 	if usSum > 0 {
-		this.UsData.Totals[d] = usSum
+		sl.UsData.Totals[d] = usSum
 	}
 	if maSum > 0 {
-		this.MaData.Totals[d] = maSum
+		sl.MaData.Totals[d] = maSum
 	}
 	if azSum > 0 {
-		this.AzData.Totals[d] = azSum
+		sl.AzData.Totals[d] = azSum
 	}
 	return true
 }

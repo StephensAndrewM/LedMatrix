@@ -22,41 +22,41 @@ type VaccinationSlide struct {
 }
 
 func NewVaccinationSlide() *VaccinationSlide {
-	this := new(VaccinationSlide)
-	this.UsData = NewDailyData("US")
-	this.MaData = NewDailyData("Mass")
-	this.AzData = NewDailyData("Ariz")
+	sl := new(VaccinationSlide)
+	sl.UsData = NewDailyData("US")
+	sl.MaData = NewDailyData("Mass")
+	sl.AzData = NewDailyData("Ariz")
 
-	this.HttpHelper = NewHttpHelper(HttpConfig{
+	sl.HttpHelper = NewHttpHelper(HttpConfig{
 		SlideId:         "VaccinationSlide",
 		RefreshInterval: 6 * time.Hour,
 		RequestUrl:      "https://github.com/owid/covid-19-data/raw/master/public/data/vaccinations/us_state_vaccinations.csv",
-		ParseCallback:   this.Parse,
+		ParseCallback:   sl.Parse,
 	})
-	return this
+	return sl
 }
 
-func (this *VaccinationSlide) Initialize() {
-	this.HttpHelper.StartLoop()
+func (sl *VaccinationSlide) Initialize() {
+	sl.HttpHelper.StartLoop()
 }
 
-func (this *VaccinationSlide) Terminate() {
-	this.HttpHelper.StopLoop()
+func (sl *VaccinationSlide) Terminate() {
+	sl.HttpHelper.StopLoop()
 }
 
-func (this *VaccinationSlide) StartDraw(d Display) {
-	DrawOnce(d, this.Draw)
+func (sl *VaccinationSlide) StartDraw(d Display) {
+	DrawOnce(d, sl.Draw)
 }
 
-func (this *VaccinationSlide) StopDraw() {
+func (sl *VaccinationSlide) StopDraw() {
 
 }
 
-func (this *VaccinationSlide) IsEnabled() bool {
+func (sl *VaccinationSlide) IsEnabled() bool {
 	return true
 }
 
-func (this *VaccinationSlide) Parse(respBytes []byte) bool {
+func (sl *VaccinationSlide) Parse(respBytes []byte) bool {
 	r := csv.NewReader(bytes.NewReader(respBytes))
 	rows, err := r.ReadAll()
 	if err != nil {
@@ -66,7 +66,7 @@ func (this *VaccinationSlide) Parse(respBytes []byte) bool {
 		return false
 	}
 
-	// We won't draw data before this point
+	// We won't draw data before sl.point
 	minDrawDate := civil.DateOf(time.Now().AddDate(0, 0, -HISTORICAL_COVID_DAYS))
 
 	dateCol := -1
@@ -125,26 +125,26 @@ func (this *VaccinationSlide) Parse(respBytes []byte) bool {
 		count := int(n)
 
 		if row[1] == "Massachusetts" {
-			this.MaData.Totals[d] = count
+			sl.MaData.Totals[d] = count
 		}
 		if row[1] == "Arizona" {
-			this.AzData.Totals[d] = count
+			sl.AzData.Totals[d] = count
 		}
 		if row[1] == "United States" {
-			this.UsData.Totals[d] = count
+			sl.UsData.Totals[d] = count
 		}
 	}
 
-	this.UsData = CalculateDiffs(this.UsData)
-	this.MaData = CalculateDiffs(this.MaData)
-	this.AzData = CalculateDiffs(this.AzData)
+	sl.UsData = CalculateDiffs(sl.UsData)
+	sl.MaData = CalculateDiffs(sl.MaData)
+	sl.AzData = CalculateDiffs(sl.AzData)
 
 	return true
 }
 
-func (this *VaccinationSlide) Draw(img *image.RGBA) {
+func (sl *VaccinationSlide) Draw(img *image.RGBA) {
 	// Stop immediately if we have errors
-	if !this.HttpHelper.LastFetchSuccess {
+	if !sl.HttpHelper.LastFetchSuccess {
 		DrawError(img, "Covid Vaccination", "Missing data.")
 		return
 	}
@@ -153,7 +153,7 @@ func (this *VaccinationSlide) Draw(img *image.RGBA) {
 	WriteString(img, "COVID-19 VACCINATIONS", green, ALIGN_CENTER, 63, 0)
 
 	yellow := color.RGBA{255, 255, 0, 255}
-	DrawDataRow(img, 8, this.UsData, yellow)
-	DrawDataRow(img, 16, this.MaData, yellow)
-	DrawDataRow(img, 24, this.AzData, yellow)
+	DrawDataRow(img, 8, sl.UsData, yellow)
+	DrawDataRow(img, 16, sl.MaData, yellow)
+	DrawDataRow(img, 24, sl.AzData, yellow)
 }

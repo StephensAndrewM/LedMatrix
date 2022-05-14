@@ -16,27 +16,27 @@ func NewTimeSlide() *TimeSlide {
 	return sl
 }
 
-func (this *TimeSlide) Initialize() {
+func (sl *TimeSlide) Initialize() {
 
 }
 
-func (this *TimeSlide) Terminate() {
+func (sl *TimeSlide) Terminate() {
 
 }
 
-func (this *TimeSlide) StartDraw(d Display) {
-	this.RedrawTicker = DrawEverySecond(d, this.Draw)
+func (sl *TimeSlide) StartDraw(d Display) {
+	sl.RedrawTicker = DrawEverySecond(d, sl.Draw)
 }
 
-func (this *TimeSlide) StopDraw() {
-	this.RedrawTicker.Stop()
+func (sl *TimeSlide) StopDraw() {
+	sl.RedrawTicker.Stop()
 }
 
-func (this *TimeSlide) IsEnabled() bool {
+func (sl *TimeSlide) IsEnabled() bool {
 	return true // Always enabled
 }
 
-func (this *TimeSlide) Draw(img *image.RGBA) {
+func (sl *TimeSlide) Draw(img *image.RGBA) {
 	white := color.RGBA{255, 255, 255, 255}
 	yellow := color.RGBA{255, 255, 0, 255}
 

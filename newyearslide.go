@@ -22,7 +22,7 @@ func NewNewYearSlide() *NewYearSlide {
 	return sl
 }
 
-func (this *NewYearSlide) Initialize() {
+func (sl *NewYearSlide) Initialize() {
 	t := time.Now()
 	year := t.Year() + 1
 	// If it's January, the new year just passed so we want to count to the
@@ -30,52 +30,52 @@ func (this *NewYearSlide) Initialize() {
 	if t.Month() == time.January {
 		year = t.Year()
 	}
-	this.Midnight = time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
+	sl.Midnight = time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
 }
 
-func (this *NewYearSlide) Terminate() {
+func (sl *NewYearSlide) Terminate() {
 
 }
 
-func (this *NewYearSlide) StartDraw(d Display) {
-	this.RedrawTicker = DrawEveryInterval((1000/FPS)*time.Millisecond, d, this.Draw)
-	this.Fireworks = []*Firework{
-		this.createFirework(10, 8, 255, 0, 0),
-		this.createFirework(27, 12, 255, 255, 0),
-		this.createFirework(112, 6, 0, 255, 255),
-		this.createFirework(103, 10, 255, 0, 255),
+func (sl *NewYearSlide) StartDraw(d Display) {
+	sl.RedrawTicker = DrawEveryInterval((1000/FPS)*time.Millisecond, d, sl.Draw)
+	sl.Fireworks = []*Firework{
+		sl.createFirework(10, 8, 255, 0, 0),
+		sl.createFirework(27, 12, 255, 255, 0),
+		sl.createFirework(112, 6, 0, 255, 255),
+		sl.createFirework(103, 10, 255, 0, 255),
 	}
 }
 
-func (this *NewYearSlide) StopDraw() {
-	this.RedrawTicker.Stop()
+func (sl *NewYearSlide) StopDraw() {
+	sl.RedrawTicker.Stop()
 }
 
-func (this *NewYearSlide) IsEnabled() bool {
-	diff := time.Until(this.Midnight)
+func (sl *NewYearSlide) IsEnabled() bool {
+	diff := time.Until(sl.Midnight)
 	return diff > (-1 * time.Hour)
 }
 
-func (this *NewYearSlide) Draw(img *image.RGBA) {
+func (sl *NewYearSlide) Draw(img *image.RGBA) {
 	c0 := color.RGBA{0, 255, 255, 255}
 	c1 := color.RGBA{255, 255, 255, 255}
 	c2 := color.RGBA{0, 255, 0, 255}
 
-	diff := time.Until(this.Midnight)
+	diff := time.Until(sl.Midnight)
 	if diff < 0 {
 		diff = 0
 	}
 
-	WriteString(img, this.fmtDuration(diff), c0, ALIGN_CENTER, GetLeftOfCenterX(img), 4)
+	WriteString(img, sl.fmtDuration(diff), c0, ALIGN_CENTER, GetLeftOfCenterX(img), 4)
 	WriteString(img, "UNTIL", c1, ALIGN_CENTER, GetLeftOfCenterX(img), 14)
-	WriteString(img, fmt.Sprintf("%d", this.Midnight.Year()), c2, ALIGN_CENTER, GetLeftOfCenterX(img)-1, 23)
+	WriteString(img, fmt.Sprintf("%d", sl.Midnight.Year()), c2, ALIGN_CENTER, GetLeftOfCenterX(img)-1, 23)
 
-	for _, f := range this.Fireworks {
+	for _, f := range sl.Fireworks {
 		f.Draw(img)
 	}
 }
 
-func (this *NewYearSlide) fmtDuration(d time.Duration) string {
+func (sl *NewYearSlide) fmtDuration(d time.Duration) string {
 	h := d / time.Hour
 	d -= h * time.Hour
 	m := d / time.Minute
@@ -92,7 +92,7 @@ type Firework struct {
 	hasBurst bool
 }
 
-func (this *NewYearSlide) createFirework(x, y int, r, g, b uint8) *Firework {
+func (sl *NewYearSlide) createFirework(x, y int, r, g, b uint8) *Firework {
 	yellow := color.RGBA{255, 255, 0, 255}
 
 	return &Firework{
@@ -112,28 +112,28 @@ func (this *NewYearSlide) createFirework(x, y int, r, g, b uint8) *Firework {
 	}
 }
 
-func (this *Firework) Draw(img *image.RGBA) {
+func (sl *Firework) Draw(img *image.RGBA) {
 	// Apply speed first, since we take different action based on that.
-	for _, e := range this.embers {
+	for _, e := range sl.embers {
 		e.applyPhysics()
 	}
 
 	// If it's still flying upwards, check if it's reached expected height.
-	if !this.hasBurst {
-		if int(this.embers[0].y) <= this.y {
-			this.hasBurst = true
-			this.initEmbers()
+	if !sl.hasBurst {
+		if int(sl.embers[0].y) <= sl.y {
+			sl.hasBurst = true
+			sl.initEmbers()
 		}
 	}
 
 	// Always draw whatever is stored
-	for _, e := range this.embers {
+	for _, e := range sl.embers {
 		e.draw(img)
 	}
 }
 
-func (this *Firework) initEmbers() {
-	this.embers = nil
+func (sl *Firework) initEmbers() {
+	sl.embers = nil
 	for v := 0.4; v <= 1.6; v += 0.4 {
 		embersInRing := 16
 		if v < 0.5 {
@@ -144,12 +144,12 @@ func (this *Firework) initEmbers() {
 			yspeed := (math.Cos(angle) * v)
 			xspeed := math.Sin(angle) * v
 
-			this.embers = append(this.embers, &FireworkEmber{
-				x:      float64(this.x),
-				y:      float64(this.y),
+			sl.embers = append(sl.embers, &FireworkEmber{
+				x:      float64(sl.x),
+				y:      float64(sl.y),
 				xspeed: xspeed,
 				yspeed: yspeed,
-				color:  this.color,
+				color:  sl.color,
 			})
 		}
 	}
@@ -163,13 +163,13 @@ type FireworkEmber struct {
 	color  color.RGBA
 }
 
-func (this *FireworkEmber) draw(img *image.RGBA) {
-	img.SetRGBA(int(math.Round(this.x)), int(math.Round(this.y)), this.color)
+func (sl *FireworkEmber) draw(img *image.RGBA) {
+	img.SetRGBA(int(math.Round(sl.x)), int(math.Round(sl.y)), sl.color)
 }
 
-func (this *FireworkEmber) applyPhysics() {
-	this.x += this.xspeed
-	this.y += this.yspeed
-	this.yspeed += (0.4 / FPS) // gravity
-	this.xspeed *= 0.96        // friction
+func (sl *FireworkEmber) applyPhysics() {
+	sl.x += sl.xspeed
+	sl.y += sl.yspeed
+	sl.yspeed += (0.4 / FPS) // gravity
+	sl.xspeed *= 0.96        // friction
 }
