@@ -4,7 +4,7 @@ import (
 	"image"
 	"image/draw"
 
-	rgbmatrix "github.com/fcjr/rgbmatrix-rpi"
+	rgbmatrix "github.com/mcuadros/go-rpi-rgb-led-matrix"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +24,7 @@ func NewLedDisplay() *LedDisplay {
 	config.Brightness = 50
 	config.ShowRefreshRate = false
 	config.PWMLSBNanoseconds = 250
-	m, err := rgbmatrix.NewRGBLedMatrix(config, &rgbmatrix.DefaultRuntimeOptions)
+	m, err := rgbmatrix.NewRGBLedMatrix(config)
 	if err != nil {
 		log.Error("Could not create hardware LED matrix.")
 		return nil
