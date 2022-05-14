@@ -23,7 +23,7 @@ type MbtaSlide struct {
 }
 
 // Station names - used in constructor
-// sl.is not an exhaustive list, just some easy ones
+// This is not an exhaustive list, just some easy ones
 const MBTA_STATION_ID_DAVIS = "place-davis"
 const MBTA_STATION_ID_PARK = "place-pktrm"
 const MBTA_STATION_ID_KENDALL = "place-knncl"
@@ -138,7 +138,7 @@ func (sl *MbtaSlide) BuildTripIdToRouteMap(resources []MbtaApiResource) map[stri
 		}
 	}
 
-	// Iterate again, looking at "trip" resources instead. sl.resource has
+	// Iterate again, looking at "trip" resources instead. This resource has
 	// the headsign attribute that we use to set Destination on the route,
 	// and the ID that we use as the map's key.
 	m := make(map[string]MbtaRoute)
@@ -246,7 +246,7 @@ func (sl *MbtaSlide) FilterTimesInPast(all []MbtaPrediction) (ret []MbtaPredicti
 	for _, p := range all {
 		var times []time.Time
 		for _, t := range p.Time {
-			if time.Since(t) >= 0 {
+			if time.Until(t) >= 0 {
 				times = append(times, t)
 			}
 		}
@@ -315,6 +315,10 @@ func (sl *MbtaSlide) Draw(img *image.RGBA) {
 
 		// Destination
 		dest := strings.ToUpper(p.Route.Destination)
+		// If the name of the place exceeds the available space, try to truncate the name.
+		if GetDisplayWidth(dest) > destWidth {
+			dest = strings.Split(dest, " ")[0]
+		}
 		WriteStringBoxed(img, dest, textColor, ALIGN_LEFT, 12, y, destWidth)
 
 		// Time estimate
